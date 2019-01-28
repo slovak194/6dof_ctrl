@@ -1,3 +1,4 @@
+from pprint import pprint
 import sophus
 
 import sympy
@@ -42,6 +43,6 @@ T = sympy.Matrix([[1, 0,  0, 0],
 
 se3 = sophus.Se3(sophus.So3(T[0:3, 0:3]), T[0:3, 3])
 
-se3.Adj()
+pprint(se3.Adj())
 
 # mb.Adjoint()
