@@ -1,5 +1,5 @@
 from pprint import pprint
-# import sophus
+import sophus
 
 from pyxacro import get_thrusters_poses
 import sympy
@@ -56,3 +56,7 @@ exit(0)
 #
 # pprint(se3.Adj())
 #
+from pprint import pprint
+import sys
+pprint(sys.path)
+
