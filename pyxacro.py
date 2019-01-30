@@ -50,5 +50,5 @@ def get_thrusters_poses(xacro_file_path):
 
 if __name__ == '__main__':
     np.set_printoptions(precision=3)
-    th = get_thrusters_poses("thirdparty/bluerov_ffg/urdf/brov2.xacro")
+    th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
     pprint(th)

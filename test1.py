@@ -1,5 +1,5 @@
 from pprint import pprint
-import sophus
+# import sophus
 
 from pyxacro import get_thrusters_poses
 import sympy
@@ -8,7 +8,7 @@ import numpy as np
 
 import modern_robotics as mr
 
-th = get_thrusters_poses("../../bluerov_ffg/urdf/brov2.xacro")
+th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
 
 for k in th.keys():
     th[k]["T_b_s"] = np.linalg.inv(th[k]["T_s_b"])
