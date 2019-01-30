@@ -2,7 +2,7 @@ from pprint import pprint
 import sophus
 
 from pyxacro import get_thrusters_poses
-import sympy
+import sympy as sp
 import numpy as np
 
 
@@ -32,14 +32,13 @@ for k, v in th["thr6"].items():
     print(v)
     print(" ")
 
-
 exit(0)
 
-# 1. Have effort for all the thrusters
-# 2. Create wrenches for all thr
-# 3. Express wrenches in s frame
-# 4. Summ all wrenches in s frame
-# 5. Do forward synamics
+# Have effort for all the thrusters
+# Create wrenches for all thr
+# Express wrenches in s frame
+# Summ all wrenches in s frame
+# Do forward synamics
 
 
 # N = np.matrix('1, 2; 4, 4')
