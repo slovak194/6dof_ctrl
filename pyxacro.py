@@ -41,8 +41,9 @@ def get_thrusters_poses(xacro_file_path):
 
         r = as_rotation_matrix(from_euler_angles(rpy[0], rpy[1], rpy[2]))
         p = xyz.reshape((3, 1))
-
-        thrusters[el.get("name")]["T_s_b"] = np.concatenate((np.concatenate((r, p), axis=1),
+        # b - body
+        # t - thruster
+        thrusters[el.get("name")]["T_b_t"] = np.concatenate((np.concatenate((r, p), axis=1),
                                                             np.array([0, 0, 0, 1], ndmin=2)), axis=0)
 
     return thrusters
