@@ -1,6 +1,0 @@
-[submodule "thirdparty/Sophus"]
-	path = thirdparty/Sophus
-	url = git@github.com:slovak194/Sophus.git
-[submodule "thirdparty/bluerov_ffg"]
-	path = thirdparty/bluerov_ffg
-	url = git@github.com:slovak194/bluerov_ffg.git
