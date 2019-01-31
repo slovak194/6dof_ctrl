@@ -28,7 +28,8 @@ def adv(v):
 th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
 
 F_b_summ = sp.Matrix.zeros(6, 1)
-fz = sp.Matrix(sp.symarray('fz', len(th.keys())))
+fx = sp.Matrix(sp.symarray('fx', len(th.keys())))  # Along which axis???
+fz = sp.Matrix(sp.symarray('fz', len(th.keys())))  # Along which axis???
 
 for n, k in enumerate(th.keys()):
     th[k]["Tbt"] = sp.Matrix(th[k]["Tbt"])
@@ -44,7 +45,10 @@ for n, k in enumerate(th.keys()):
     so3_bt = sophus.So3(R)
     se3_bt = sophus.Se3(so3_bt, p)
 
-    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, fz[n, 0]])])
+    f__ = sp.Matrix([fx[n, 0], 0, 0])  # Along which axis???
+    # f__ = sp.Matrix([0, 0, fz[n, 0]])  # Along which axis???
+
+    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), f__])
     F_b = sophus.Se3.Adj(se3_bt.inverse()).T * F_t
 
     F_b_summ += F_b
@@ -77,9 +81,9 @@ G_b[3:, 3:] = m * sp.Matrix.eye(3)
 
 expr = G_b * dV_b - AdV_b.T * G_b * V_b - F_b_summ
 
-fz_res_dict = sp.solve(expr, fz)
+fz_res_dict = sp.solve(expr, fx)   # Along which axis??? fx or fz?
 
-fz_res = sp.Matrix([fz_res_dict[key] for key in fz])
+fz_res = sp.Matrix([fz_res_dict[key] for key in fx])
 
 
 rprint(expr)
