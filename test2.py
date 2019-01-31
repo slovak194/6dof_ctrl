@@ -27,11 +27,11 @@ th_f_x = sp.symarray('th_f_x', (len(th.keys()), 1))
 for n, k in enumerate(th.keys()):
     th[k]["T_b_t"] = sp.Matrix(th[k]["T_b_t"])
 
-    # R = th[k]["T_b_t"][0:3, 0:3]
-    # p = th[k]["T_b_t"][0:3, 3:]
+    R = th[k]["T_b_t"][0:3, 0:3]
+    p = th[k]["T_b_t"][0:3, 3:]
 
-    R = sp.Matrix(sp.symarray(k + '_R_b_t', (3, 3)))
-    p = sp.Matrix(sp.symarray(k + '_p_b_t', (3, 1)))
+    # R = sp.Matrix(sp.symarray(k + '_R_b_t', (3, 3)))
+    # p = sp.Matrix(sp.symarray(k + '_p_b_t', (3, 1)))
 
     so3_bt = sophus.So3(R)
     se3_bt = sophus.Se3(so3_bt, p)
@@ -42,16 +42,21 @@ for n, k in enumerate(th.keys()):
     F_b_summ += F_b
 
 
-Ixx_b, Iyy_b, Izz_b = sp.symbols("Ixx_b Iyy_b Izz_b")
-Ixy_b, Ixz_b, Iyz_b = sp.symbols("Ixy_b Ixz_b Iyz_b")
+# m = sp.symbols('m')
+# Ixx_b, Iyy_b, Izz_b = sp.symbols("Ixx_b Iyy_b Izz_b")
+# Ixy_b, Ixz_b, Iyz_b = sp.symbols("Ixy_b Ixz_b Iyz_b")
+
+m = 7.5
+Ixx_b = 0.099
+Iyy_b = 0.129
+Izz_b = 0.16
+Ixy_b = 0.0
+Ixz_b = 0.0056
+Iyz_b = 0
 
 I_b = sp.Matrix([ [Ixx_b, Ixy_b,  Ixz_b],
                   [Ixy_b, Iyy_b,  Iyz_b],
                   [Ixz_b, Iyz_b,  Izz_b]])
-
-
-m = sp.symbols('m')
-
 
 V_b = sp.Matrix([sp.Matrix(sp.symarray('w', (3, 1))), sp.Matrix(sp.symarray('v', (3, 1)))])
 dV_b = sp.Matrix([sp.Matrix(sp.symarray('dw', (3, 1))), sp.Matrix(sp.symarray('dv', (3, 1)))])
