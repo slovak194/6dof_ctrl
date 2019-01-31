@@ -43,7 +43,7 @@ def get_thrusters_poses(xacro_file_path):
         p = xyz.reshape((3, 1))
         # b - body
         # t - thruster
-        thrusters[el.get("name")]["T_b_t"] = np.concatenate((np.concatenate((r, p), axis=1),
+        thrusters[el.get("name")]["Tbt"] = np.concatenate((np.concatenate((r, p), axis=1),
                                                             np.array([0, 0, 0, 1], ndmin=2)), axis=0)
 
     return thrusters
