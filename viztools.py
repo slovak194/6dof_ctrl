@@ -38,35 +38,19 @@ keys = th.keys()
 for k in keys:
     artists[k] = []
 
-    Tt = np.identity(4)
+    Tbt = th[k]["Tbt"]
 
-    Tb = th[k]["Tbt"] @ Tt
-
-    artists[k].append(ax.scatter(Tb[0, 3:][0], Tb[1, 3:][0], Tb[2, 3:][0], s=10, c='black'))
+    artists[k].append(ax.scatter(Tbt[0, 3:][0], Tbt[1, 3:][0], Tbt[2, 3:][0], s=10, c='black'))
 
     mutation_scale = 0.1
     sc = 0.05
 
-    axis = 0
-    artists[k].append(Arrow3D(
-        [Tb[0, 3:][0], Tb[0, 3:][0] + Tb[0, axis] * sc],
-        [Tb[1, 3:][0], Tb[1, 3:][0] + Tb[1, axis] * sc],
-        [Tb[2, 3:][0], Tb[2, 3:][0] + Tb[2, axis] * sc],
-        arrowstyle="-|>", lw=2, mutation_scale=mutation_scale, color="red"))
-
-    axis = 1
-    artists[k].append(Arrow3D(
-        [Tb[0, 3:][0], Tb[0, 3:][0] + Tb[0, axis] * sc],
-        [Tb[1, 3:][0], Tb[1, 3:][0] + Tb[1, axis] * sc],
-        [Tb[2, 3:][0], Tb[2, 3:][0] + Tb[2, axis] * sc],
-        arrowstyle="-|>", lw=2, mutation_scale=mutation_scale, color="green"))
-
-    axis = 2
-    artists[k].append(Arrow3D(
-        [Tb[0, 3:][0], Tb[0, 3:][0] + Tb[0, axis] * sc],
-        [Tb[1, 3:][0], Tb[1, 3:][0] + Tb[1, axis] * sc],
-        [Tb[2, 3:][0], Tb[2, 3:][0] + Tb[2, axis] * sc],
-        arrowstyle="-|>", lw=2, mutation_scale=mutation_scale, color="blue"))
+    for axis, color in zip([0, 1, 2], ["red", "green", "blue"]):
+        artists[k].append(Arrow3D(
+            [Tbt[0, 3:][0], Tbt[0, 3:][0] + Tbt[0, axis] * sc],
+            [Tbt[1, 3:][0], Tbt[1, 3:][0] + Tbt[1, axis] * sc],
+            [Tbt[2, 3:][0], Tbt[2, 3:][0] + Tbt[2, axis] * sc],
+            arrowstyle="-|>", lw=2, mutation_scale=mutation_scale, color=color))
 
     for artist in artists[k]:
         ax.add_artist(artist)
@@ -74,7 +58,7 @@ for k in keys:
 
 ax.set_aspect('equal')
 
-box = 1
+box = 0.2
 
 ax.set_xlim(-box, box)
 ax.set_ylim(-box, box)
