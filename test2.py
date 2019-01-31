@@ -7,7 +7,6 @@ import numpy as np
 
 import modern_robotics as mr
 
-
 def round_expr(expr, num_digits):
     return expr.xreplace({n : round(n, num_digits) for n in expr.atoms(sp.Number)})
 
@@ -29,10 +28,12 @@ def adv(v):
 th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
 
 F_b_summ = sp.Matrix.zeros(6, 1)
-th_f_x = sp.Matrix(sp.symarray('fx', len(th.keys())))
+fz = sp.Matrix(sp.symarray('fz', len(th.keys())))
 
 for n, k in enumerate(th.keys()):
     th[k]["Tbt"] = sp.Matrix(th[k]["Tbt"])
+
+    rprint(th[k]["Tbt"])
 
     R = th[k]["Tbt"][0:3, 0:3]
     p = th[k]["Tbt"][0:3, 3:]
@@ -43,7 +44,7 @@ for n, k in enumerate(th.keys()):
     so3_bt = sophus.So3(R)
     se3_bt = sophus.Se3(so3_bt, p)
 
-    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([th_f_x[n, 0], 0, 0])])
+    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, fz[n, 0]])])
     F_b = sophus.Se3.Adj(se3_bt.inverse()).T * F_t
 
     F_b_summ += F_b
@@ -76,13 +77,17 @@ G_b[3:, 3:] = m * sp.Matrix.eye(3)
 
 expr = G_b * dV_b - AdV_b.T * G_b * V_b - F_b_summ
 
-th_f_x_res_dict = sp.solve(expr, th_f_x)
+fz_res_dict = sp.solve(expr, fz)
 
-th_f_x_res = sp.Matrix([th_f_x_res_dict[key] for key in th_f_x])
+fz_res = sp.Matrix([fz_res_dict[key] for key in fz])
 
 
 rprint(expr)
-rprint(th_f_x_res)
+rprint(fz_res)
+
+
+
+
 
 # F_b = G_b * dV_b - [AdV_b].T * G_b * V_b
 
