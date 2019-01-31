@@ -70,6 +70,7 @@ G_b[3:, 3:] = m * sp.Matrix.eye(3)
 
 expr = G_b * dV_b - AdV_b.T * G_b * V_b - F_b_summ
 
+sp.solve(expr, sp.Matrix(th_f_x))
 
 # F_b = G_b * dV_b - [AdV_b].T * G_b * V_b
 
