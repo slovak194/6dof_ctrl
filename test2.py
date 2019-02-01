@@ -1,7 +1,7 @@
 from pprint import pprint
 import sophus
 
-from pyxacro import get_thrusters_poses
+from pyxacro import get_robot
 import sympy as sp
 import numpy as np
 
@@ -24,16 +24,16 @@ def adv(v):
     return res
 
 
-th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
+brov2 = get_robot("../bluerov_ffg/urdf/brov2.urdf")
 
 F_b_summ = sp.Matrix.zeros(6, 1)
-ftz = sp.Matrix(sp.symarray('ftz', len(th.keys())))  # Along which axis???
+ftz = sp.Matrix(sp.symarray('ftz', len(brov2["robot"]["joint"])))  # Along which axis???
 
-for n, k in enumerate(th.keys()):
-    th[k]["Tbt"] = sp.Matrix(th[k]["Tbt"])
+for n, thruster in enumerate(brov2["robot"]["joint"]):
+    Tbt = sp.Matrix(thruster["Tbt"])
 
-    R = th[k]["Tbt"][0:3, 0:3]
-    p = th[k]["Tbt"][0:3, 3:]
+    R = Tbt[0:3, 0:3]
+    p = Tbt[0:3, 3:]
 
     # R = sp.Matrix(sp.symarray(k + '_Rbt', (3, 3)))
     # p = sp.Matrix(sp.symarray(k + '_pbt', (3, 1)))

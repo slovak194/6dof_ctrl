@@ -1,55 +1,45 @@
 from pprint import pprint
-import xml.etree.ElementTree
+import xmltodict as xmltd
 import numpy as np
 from quaternion import from_euler_angles
 from quaternion import as_rotation_matrix
 
 
-def parse_xacro_expr(expr: str, prop_dict: dict):
-    els = expr.split(" ")
-    nums = []
-    for elem in els:
-        elem = elem.replace("${", "")
-        elem = elem.replace("}", "")
-        for key, value in prop_dict.items():
-            elem = elem.replace(key, value)
-        if type(elem) is float:
-            nums.append(np.float64(elem))
-        elif type(elem) is str:
-            nums.append(np.float64(eval(elem)))
-        else:
-            assert False
+def get_robot(urdf_file_path):
+    with open(urdf_file_path, 'r') as f:
+        rob = xmltd.parse(f.read())
 
-    return np.array(nums)
+        for joint in rob["robot"]["joint"]:
+            joint["origin"]["@xyz"] = np.float64(joint["origin"]["@xyz"].split(" "))
+            joint["origin"]["@rpy"] = np.float64(joint["origin"]["@rpy"].split(" "))
 
+            r = as_rotation_matrix(from_euler_angles(joint["origin"]["@rpy"][2],
+                                                     joint["origin"]["@rpy"][1],
+                                                     joint["origin"]["@rpy"][0]))
 
-def get_thrusters_poses(xacro_file_path):
-    e = xml.etree.ElementTree.parse(xacro_file_path).getroot()
-    props = {}
+            p = joint["origin"]["@xyz"].reshape((3, 1))
+            # b - body
+            # t - thruster
+            joint["Tbt"] = np.concatenate((np.concatenate((r, p), axis=1),
+                                           np.array([0, 0, 0, 1], ndmin=2)), axis=0)
 
-    for el in e.findall("{http://www.ros.org/wiki/xacro}property"):
-        if type(el.get("value")) is not str:
-            print(el.get("value"))
-        props[el.get("name")] = el.get("value")
+        rob["robot"]["link"][0]["inertial"]["origin"]["@xyz"] = \
+            np.float64(rob["robot"]["link"][0]["inertial"]["origin"]["@xyz"].split(" "))
 
-    thrusters = {}
+        rob["robot"]["link"][0]["inertial"]["origin"]["@rpy"] = \
+            np.float64(rob["robot"]["link"][0]["inertial"]["origin"]["@rpy"].split(" "))
 
-    for el in e.findall("{http://www.ros.org/wiki/xacro}thruster_link"):
-        thrusters[el.get("name")] = {}
-        xyz = parse_xacro_expr(el.get("xyz"), props)
-        rpy = parse_xacro_expr(el.get("rpy"), props)
+        rob["robot"]["link"][0]["inertial"]["mass"]["@value"] = \
+            np.float64(rob["robot"]["link"][0]["inertial"]["mass"]["@value"].split(" "))
 
-        r = as_rotation_matrix(from_euler_angles(rpy[2], rpy[1], rpy[0]))
-        p = xyz.reshape((3, 1))
-        # b - body
-        # t - thruster
-        thrusters[el.get("name")]["Tbt"] = np.concatenate((np.concatenate((r, p), axis=1),
-                                                            np.array([0, 0, 0, 1], ndmin=2)), axis=0)
+        for key in rob["robot"]["link"][0]["inertial"]["inertia"].keys():
+            rob["robot"]["link"][0]["inertial"]["inertia"][key] = \
+                np.float64(rob["robot"]["link"][0]["inertial"]["inertia"][key])
 
-    return thrusters
+        return rob
 
 
 if __name__ == '__main__':
     np.set_printoptions(precision=3)
-    th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
+    th = get_robot("../bluerov_ffg/urdf/brov2.urdf")
     pprint(th)
