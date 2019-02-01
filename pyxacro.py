@@ -39,7 +39,7 @@ def get_thrusters_poses(xacro_file_path):
         xyz = parse_xacro_expr(el.get("xyz"), props)
         rpy = parse_xacro_expr(el.get("rpy"), props)
 
-        r = as_rotation_matrix(from_euler_angles(rpy[0], rpy[1], rpy[2]))
+        r = as_rotation_matrix(from_euler_angles(rpy[2], rpy[1], rpy[0]))
         p = xyz.reshape((3, 1))
         # b - body
         # t - thruster
