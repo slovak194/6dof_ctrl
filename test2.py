@@ -28,8 +28,11 @@ def adv(v):
 th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
 
 F_b_summ = sp.Matrix.zeros(6, 1)
-fx = sp.Matrix(sp.symarray('fx', len(th.keys())))  # Along which axis???
-fz = sp.Matrix(sp.symarray('fz', len(th.keys())))  # Along which axis???
+# fz = sp.Matrix(sp.symarray('fz', len(th.keys())))  # Along which axis???
+fz_0, fz_1, fz_2, fz_3, fz_4, fz_5 = sp.symbols('fz_0, fz_1, fz_2, fz_3, fz_4, fz_5')
+fz = sp.Matrix([fz_0, fz_1, fz_2, fz_3, fz_4, fz_5])
+
+# fz = sp.MatrixSymbol('fz', 6, 1)
 
 for n, k in enumerate(th.keys()):
     th[k]["Tbt"] = sp.Matrix(th[k]["Tbt"])
@@ -45,14 +48,10 @@ for n, k in enumerate(th.keys()):
     so3_bt = sophus.So3(R)
     se3_bt = sophus.Se3(so3_bt, p)
 
-    f__ = sp.Matrix([fx[n, 0], 0, 0])  # Along which axis???
-    # f__ = sp.Matrix([0, 0, fz[n, 0]])  # Along which axis???
-
-    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), f__])
+    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, fz[n, 0]])])
     F_b = sophus.Se3.Adj(se3_bt.inverse()).T * F_t
 
     F_b_summ += F_b
-
 
 # m = sp.symbols('m')
 # Ixx_b, Iyy_b, Izz_b = sp.symbols("Ixx_b Iyy_b Izz_b")
@@ -70,35 +69,40 @@ I_b = sp.Matrix([ [Ixx_b, Ixy_b,  Ixz_b],
                   [Ixy_b, Iyy_b,  Iyz_b],
                   [Ixz_b, Iyz_b,  Izz_b]])
 
-V_b = sp.Matrix([sp.Matrix(sp.symarray('w', 3)), sp.Matrix(sp.symarray('v', 3))])
-dV_b = sp.Matrix([sp.Matrix(sp.symarray('dw', 3)), sp.Matrix(sp.symarray('dv', 3))])
-
-AdV_b = adv(V_b)
-
 G_b = sp.Matrix.zeros(6, 6)
 G_b[0:3, 0:3] = I_b
 G_b[3:, 3:] = m * sp.Matrix.eye(3)
 
+# Feneral case:
+
+V_b = sp.Matrix([sp.Matrix(sp.symarray('w', 3)), sp.Matrix(sp.symarray('v', 3))])
+dV_b = sp.Matrix([sp.Matrix(sp.symarray('dw', 3)), sp.Matrix(sp.symarray('dv', 3))])
+AdV_b = adv(V_b)
+
 expr = G_b * dV_b - AdV_b.T * G_b * V_b - F_b_summ
 
-fz_res_dict = sp.solve(expr, fx)   # Along which axis??? fx or fz?
-
-fz_res = sp.Matrix([fz_res_dict[key] for key in fx])
-
+fz_res_dict = sp.solve(expr, fz)   # Along which axis??? fx or fz?
+fz_res = sp.Matrix([fz_res_dict[key] for key in fz])
 
 rprint(expr)
 rprint(fz_res)
 
+fz_res.jacobian(dV_b)
+
+fz_res_num = sp.lambdify((V_b, dV_b), fz_res, 'numpy')
+
+V_b_numeric = np.array([0, 0, 0, 0, 0, 0])
+dV_b_numeric = np.array([0, 0, 0.1, 0, 0, 0])
+print(fz_res_num(V_b_numeric, dV_b_numeric))
 
 
+####
+
+# F_b_summ.applyfunc(lambda ij: ij.coeff(fz_2))
 
 
-# F_b = G_b * dV_b - [AdV_b].T * G_b * V_b
-
-
-# Have effort for all the thrusters
-# Create wrenches for all thr
-# Express wrenches in s frame
-# Summ all wrenches in s frame
-# Do forward synamics
+# M_i = -h_i*w_i - k_i*qw*qv_i  -->
+#
+# k_i = I_i
+# h_i = I_i
 
