@@ -5,7 +5,6 @@ from pyxacro import get_thrusters_poses
 import sympy as sp
 import numpy as np
 
-import modern_robotics as mr
 
 def round_expr(expr, num_digits):
     return expr.xreplace({n : round(n, num_digits) for n in expr.atoms(sp.Number)})
@@ -28,16 +27,10 @@ def adv(v):
 th = get_thrusters_poses("../bluerov_ffg/urdf/brov2.xacro")
 
 F_b_summ = sp.Matrix.zeros(6, 1)
-# fz = sp.Matrix(sp.symarray('fz', len(th.keys())))  # Along which axis???
-fz_0, fz_1, fz_2, fz_3, fz_4, fz_5 = sp.symbols('fz_0, fz_1, fz_2, fz_3, fz_4, fz_5')
-fz = sp.Matrix([fz_0, fz_1, fz_2, fz_3, fz_4, fz_5])
-
-# fz = sp.MatrixSymbol('fz', 6, 1)
+ftz = sp.Matrix(sp.symarray('ftz', len(th.keys())))  # Along which axis???
 
 for n, k in enumerate(th.keys()):
     th[k]["Tbt"] = sp.Matrix(th[k]["Tbt"])
-
-    rprint(th[k]["Tbt"])
 
     R = th[k]["Tbt"][0:3, 0:3]
     p = th[k]["Tbt"][0:3, 3:]
@@ -48,10 +41,25 @@ for n, k in enumerate(th.keys()):
     so3_bt = sophus.So3(R)
     se3_bt = sophus.Se3(so3_bt, p)
 
-    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, fz[n, 0]])])
+    F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, ftz[n, 0]])])
     F_b = sophus.Se3.Adj(se3_bt.inverse()).T * F_t
 
     F_b_summ += F_b
+
+# Solve force for each thruster from desired forces and moments in body frame
+F_b_desired = sp.Matrix([sp.Matrix(sp.symarray('mb', 3)), sp.Matrix(sp.symarray('fb', 3))])
+ftz_from_F_b_desired_expr = F_b_summ - F_b_desired
+ftz_from_F_b_desired_result = sp.Matrix(sp.linsolve(ftz_from_F_b_desired_expr.values(), ftz.values()).args[0])
+
+rprint(ftz_from_F_b_desired_expr)
+rprint(ftz_from_F_b_desired_result)
+rprint(ftz_from_F_b_desired_result.jacobian(F_b_desired))
+
+get_ftz_from_F_b_desired = sp.lambdify((F_b_desired,), ftz_from_F_b_desired_result, 'numpy')
+print(get_ftz_from_F_b_desired(np.array([0, 0, 1, 0, 0, 0])))
+
+
+# Solve force for each thruster from desired angular and linear acceleration in body frame
 
 # m = sp.symbols('m')
 # Ixx_b, Iyy_b, Izz_b = sp.symbols("Ixx_b Iyy_b Izz_b")
@@ -79,30 +87,23 @@ V_b = sp.Matrix([sp.Matrix(sp.symarray('w', 3)), sp.Matrix(sp.symarray('v', 3))]
 dV_b = sp.Matrix([sp.Matrix(sp.symarray('dw', 3)), sp.Matrix(sp.symarray('dv', 3))])
 AdV_b = adv(V_b)
 
-expr = G_b * dV_b - AdV_b.T * G_b * V_b - F_b_summ
 
-fz_res_dict = sp.solve(expr, fz)   # Along which axis??? fx or fz?
-fz_res = sp.Matrix([fz_res_dict[key] for key in fz])
+ftz_from_V_b_dV_b_expr = G_b * dV_b - AdV_b.T * G_b * V_b - F_b_summ
 
-rprint(expr)
-rprint(fz_res)
+ftz_from_V_b_dV_b_result = sp.Matrix([sp.solve(ftz_from_V_b_dV_b_expr, ftz)[key] for key in ftz])
 
-fz_res.jacobian(dV_b)
+rprint(ftz_from_V_b_dV_b_expr)
+rprint(ftz_from_V_b_dV_b_result)
+rprint(ftz_from_V_b_dV_b_result.jacobian(dV_b))
 
-fz_res_num = sp.lambdify((V_b, dV_b), fz_res, 'numpy')
+get_ftz_from_V_b_dV_b = sp.lambdify((V_b, dV_b), ftz_from_V_b_dV_b_result, 'numpy')
 
-V_b_numeric = np.array([0, 0, 0, 0, 0, 0])
-dV_b_numeric = np.array([0, 0, 0.1, 0, 0, 0])
-print(fz_res_num(V_b_numeric, dV_b_numeric))
+print(get_ftz_from_V_b_dV_b(np.array([0, 0, 0, 0, 0, 0]), np.array([0, 0, 0.1, 0, 0, 0])))
 
 
 ####
-
-# F_b_summ.applyfunc(lambda ij: ij.coeff(fz_2))
-
 
 # M_i = -h_i*w_i - k_i*qw*qv_i  -->
 #
 # k_i = I_i
 # h_i = I_i
-
