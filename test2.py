@@ -65,13 +65,14 @@ print(get_ftz_from_F_b_desired(np.array([0, 0, 1, 0, 0, 0])))
 # Ixx_b, Iyy_b, Izz_b = sp.symbols("Ixx_b Iyy_b Izz_b")
 # Ixy_b, Ixz_b, Iyz_b = sp.symbols("Ixy_b Ixz_b Iyz_b")
 
-m = 7.5
-Ixx_b = 0.099
-Iyy_b = 0.129
-Izz_b = 0.16
-Ixy_b = 0.0
-Ixz_b = 0.0056
-Iyz_b = 0
+m = brov2["robot"]["link"][0]["inertial"]["mass"]["@value"]
+I_b = brov2["robot"]["link"][0]["inertial"]["inertia"]
+Ixx_b = I_b["@ixx"]
+Iyy_b = I_b["@iyy"]
+Izz_b = I_b["@izz"]
+Ixy_b = I_b["@ixy"]
+Ixz_b = I_b["@ixz"]
+Iyz_b = I_b["@iyz"]
 
 I_b = sp.Matrix([ [Ixx_b, Ixy_b,  Ixz_b],
                   [Ixy_b, Iyy_b,  Iyz_b],

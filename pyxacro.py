@@ -30,7 +30,7 @@ def get_robot(urdf_file_path):
             np.float64(rob["robot"]["link"][0]["inertial"]["origin"]["@rpy"].split(" "))
 
         rob["robot"]["link"][0]["inertial"]["mass"]["@value"] = \
-            np.float64(rob["robot"]["link"][0]["inertial"]["mass"]["@value"].split(" "))
+            np.float64(rob["robot"]["link"][0]["inertial"]["mass"]["@value"])
 
         for key in rob["robot"]["link"][0]["inertial"]["inertia"].keys():
             rob["robot"]["link"][0]["inertial"]["inertia"][key] = \
