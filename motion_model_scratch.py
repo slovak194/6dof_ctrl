@@ -3,6 +3,7 @@ import sophus
 
 from pyxacro import get_robot
 import sympy as sp
+import sympy.utilities.codegen as sgen
 import numpy as np
 
 
@@ -80,6 +81,28 @@ rprint(ftz_from_F_c_desired_result.jacobian(F_c_desired))
 get_ftz_from_F_c_desired = sp.lambdify((F_c_desired,), ftz_from_F_c_desired_result, 'numpy')
 
 print(get_ftz_from_F_c_desired(np.array([0, 0, 0, 1, 0, 0])))
+
+ttt = sp.Matrix(sp.symarray)
+
+[(c_name, c_code), (h_name, c_header)] = \
+    sgen.codegen(("get_ftz_from_F_c_desired", sp.Eq(sp.MatrixSymbol('ftz', 6, 1), ftz_from_F_c_desired_result)),
+                 language="C99",
+                 prefix="get_ftz_from_F_c_desired",
+                 to_files=False,
+                 header=False,
+                 empty=True)
+
+
+print(c_code)
+
+[(m_name, m_code)] = \
+    sgen.codegen(("get_ftz_from_F_c_desired", sp.Eq(sp.MatrixSymbol('ftz', 6, 1), ftz_from_F_c_desired_result)),
+                 language="Octave",
+                 to_files=False,
+                 header=False,
+                 empty=True)
+print(m_name)
+print(m_code)
 
 # Solve force for each thruster from desired angular and linear acceleration in body frame
 
