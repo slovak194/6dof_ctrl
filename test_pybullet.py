@@ -65,12 +65,13 @@ def get_state():
     t_sc, q_sc = p.getBasePositionAndOrientation(boxId)
     t_sc = np.array(t_sc)
     q_sc = nq.quaternion(q_sc[3], q_sc[0], q_sc[1], q_sc[2])
-    R_bs = as_rotation_matrix(q_sc).T
+    R_sc = as_rotation_matrix(q_sc)
+    R_cs = as_rotation_matrix(q_sc).T
     v_s, w_s = p.getBaseVelocity(boxId)
     v_s = np.array(v_s)
     w_s = np.array(w_s)
-    w_c = R_bs @ w_s
-    v_c = R_bs @ v_s
+    w_c = R_cs @ w_s
+    v_c = R_cs @ v_s
     return q_sc, w_c
 
 
@@ -82,6 +83,8 @@ for q_st in l_q_st:
 
     q_ts = q_st.conj()
     q_tc = q_ts * q_sc
+
+    prev_q_tc_w = q_tc.w
 
     while q_tc.w < 0.999 or np.linalg.norm(w_c) > 0.1:
 
@@ -101,6 +104,9 @@ for q_st in l_q_st:
                 p.applyExternalForce(boxId, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
         else:
             pass
+
+        if np.abs(prev_q_tc_w - q_tc.w) > 0.01:
+            prev_q_tc_w = q_tc.w
 
         p.stepSimulation()
 
