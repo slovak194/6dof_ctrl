@@ -29,20 +29,27 @@ k = np.array([
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@izz"]
 ], dtype=np.float64)
 
-h = k * 10
+h = k
 
-q_st = from_euler_angles(np.pi / 1.1,
-                         np.pi / 3,
-                         0)
+h = h * 100.0
+k = k * 1000.0
 
-q_ts = q_st.conj()
+l_q_st = [
+    from_euler_angles(np.pi / 4, 0, 0),
+    from_euler_angles(-np.pi / 4, 0, 0),
+    from_euler_angles(np.pi / 4, np.pi / 3, 0),
+    from_euler_angles(-np.pi / 4, np.pi / 3, 0),
+    from_euler_angles(np.pi / 4, -np.pi / 3, 0),
+    from_euler_angles(-np.pi / 4, -np.pi / 3, 0),
+    ]
+
 
 p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=boxId, parentLinkIndex=-1)
 p.addUserDebugLine([0, 0, 0], [0, 1, 0], [0, 1, 0], parentObjectUniqueId=boxId, parentLinkIndex=-1)
 p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=boxId, parentLinkIndex=-1)
 
-for i in range(1000000):
 
+def get_state():
     t_sb, q_sb = p.getBasePositionAndOrientation(boxId)
     t_sb = np.array(t_sb)
     q_sb = nq.quaternion(q_sb[3], q_sb[0], q_sb[1], q_sb[2])
@@ -50,21 +57,31 @@ for i in range(1000000):
     v_s, w_s = p.getBaseVelocity(boxId)
     v_s = np.array(v_s)
     w_s = np.array(w_s)
-
     w_b = R_bs @ w_s
     v_b = R_bs @ v_s
+    return q_sb, w_b
 
+
+for q_st in l_q_st:
+    q_sb, w_b = get_state()
+
+    q_ts = q_st.conj()
     q_tb = q_ts * q_sb
 
-    M_b = -h * w_b - k * q_tb.w * q_tb.vec
+    while q_tb.w < 0.999 or np.linalg.norm(w_b) > 0.1:
 
-    p.applyExternalTorque(boxId, -1, M_b, flags=p.WORLD_FRAME)  # TODO bug in pybullet. WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
+        q_sb, w_b = get_state()
+        q_tb = q_ts * q_sb
 
-    p.stepSimulation()
+        M_b = -h * w_b - k * q_tb.w * q_tb.vec
 
-    # time.sleep(1./240.)
-    if i % 10 == 0:
-        time.sleep(1. / 1000000.0)
+        p.applyExternalTorque(boxId, -1, M_b, flags=p.WORLD_FRAME)  # TODO bug in pybullet. WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
+
+        p.stepSimulation()
+
+        time.sleep(1./240.)
+        # if i % 10 == 0:
+            # time.sleep(1. / 1000000.0)
 
 
 p.disconnect()
