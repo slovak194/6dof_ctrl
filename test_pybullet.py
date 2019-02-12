@@ -18,7 +18,7 @@ class ControlType(Enum):
     FORCE = 2
 
 
-get_ftz_from_F_c = get_get_ftz_from_F_c()
+get_ftz_from_F_c = get_get_ftz_from_F_c()["lambda"]
 
 physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
@@ -74,8 +74,8 @@ def get_state():
     return q_sc, w_c
 
 
-# ctrl = ControlType.FORCE
-ctrl = ControlType.TORQUE
+ctrl = ControlType.FORCE
+# ctrl = ControlType.TORQUE
 
 for q_st in l_q_st:
     q_sc, w_c = get_state()
