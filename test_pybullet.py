@@ -62,6 +62,7 @@ p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=boxId, 
 
 
 def get_state():
+    s = {}
     t_sc, q_sc = p.getBasePositionAndOrientation(boxId)
     t_sc = np.array(t_sc)
     q_sc = nq.quaternion(q_sc[3], q_sc[0], q_sc[1], q_sc[2])
@@ -72,26 +73,27 @@ def get_state():
     w_s = np.array(w_s)
     w_c = R_cs @ w_s
     v_c = R_cs @ v_s
-    return q_sc, w_c
+
+    return {"q_sc": q_sc, "w_c": w_c}
 
 
 ctrl = ControlType.FORCE
 # ctrl = ControlType.TORQUE
 
 for q_st in l_q_st:
-    q_sc, w_c = get_state()
+    s = get_state()
 
     q_ts = q_st.conj()
-    q_tc = q_ts * q_sc
+    q_tc = q_ts * s["q_sc"]
 
     prev_q_tc_w = q_tc.w
 
-    while q_tc.w < 0.999 or np.linalg.norm(w_c) > 0.1:
+    while q_tc.w < 0.999 or np.linalg.norm(s["w_c"]) > 0.1:
 
-        q_sc, w_c = get_state()
-        q_tc = q_ts * q_sc
+        s = get_state()
+        q_tc = q_ts * s["q_sc"]
 
-        M_c = -h * w_c - k * q_tc.w * q_tc.vec
+        M_c = -h * s["w_c"] - k * q_tc.w * q_tc.vec
 
         if ctrl == ControlType.TORQUE:
             M_c[0] = np.sign(M_c[0]) * np.minimum(np.abs(M_c[0]), 3)
