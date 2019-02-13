@@ -24,7 +24,7 @@ physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 p.setGravity(0, 0, 0)
 
-p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "brov2.mp4")
+# p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "brov2.mp4")
 
 planeId = p.loadURDF("plane.urdf")
 cubeStartPos = [0, 0, 1]
@@ -71,6 +71,40 @@ for link_idx in range(0, 6):
 # s - origin
 # t - target
 # c - center of gravity
+
+
+def capture_frame():
+    camTargetPos = [0.,0.,0.]
+    cameraUp = [0,0,1]
+    cameraPos = [1,1,1]
+    yaw = 40
+    pitch = 10.0
+
+    roll=0
+    upAxisIndex = 2
+    camDistance = 4
+    pixelWidth = 320
+    pixelHeight = 240
+    nearPlane = 0.01
+    farPlane = 1000
+    lightDirection = [0,1,0]
+    lightColor = [1,1,1]#optional argument
+    fov = 60
+
+    viewMatrix = p.computeViewMatrixFromYawPitchRoll(camTargetPos, camDistance, yaw, pitch, roll, upAxisIndex)
+    aspect = pixelWidth / pixelHeight
+    projectionMatrix = p.computeProjectionMatrixFOV(fov, aspect, nearPlane, farPlane)
+    img_arr = p.getCameraImage(pixelWidth, pixelHeight, viewMatrix,projectionMatrix, lightDirection,lightColor)
+    w=img_arr[0]
+    h=img_arr[1]
+    rgb=img_arr[2]
+    dep=img_arr[3]
+    #print 'width = %d height = %d' % (w,h)
+    # reshape creates np array
+    np_img_arr = np.reshape(rgb, (h, w, 4))
+    np_img_arr = np_img_arr*(1./255.)
+
+
 
 def get_state():
     s = {}
@@ -157,6 +191,7 @@ for q_st in l_q_st:
         #     prev_q_tc_w = q_tc.w
 
         p.stepSimulation()
+        capture_frame()
 
         time.sleep(1. / 240.)
 
