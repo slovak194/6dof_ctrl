@@ -121,30 +121,27 @@ for q_st in l_q_st:
         elif ctrl == ControlType.FORCE:
             ftz = get_ftz_from_F_c(np.concatenate((M_c, np.zeros((3,)))))
             ftz_max = np.max(np.abs(ftz))
-            ftz_lim = 2
+            ftz_lim = 1
 
-            for link_idx, ftz_i in enumerate(ftz):
+            if ftz_max > ftz_lim:
+                ftz = ftz*ftz_lim/ftz_max
 
-                if ftz_max > ftz_lim:
-                    ftz_i = ftz_i*ftz_lim/ftz_max
-
-                ftz_i = np.sign(ftz_i) * np.minimum(np.abs(ftz_i), 2)
+            for link_idx, ftz_i in enumerate(np.nditer(ftz)):
 
                 p.applyExternalForce(robot_id, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
 
                 p_zero_t = np.array([0, 0, 0, 1])
-                p_fz_t = np.array([0, 0, -ftz_i*1, 1])
+                p_fz_t = np.array([0, 0, ftz_i, 1])
 
                 Tct = brov2["robot"]["joint"][link_idx]["Tct"]
-
-                p_zero_s = s["Tsc"] @ Tct @ p_zero_t
-                p_fz_s = s["Tsc"] @ Tct @ p_fz_t
+                Tsc = s["Tsc"]
+                p_zero_s = Tsc @ Tct @ p_zero_t
+                p_fz_s = Tsc @ Tct @ p_fz_t
 
                 db_graph["ftz"][link_idx] = p.addUserDebugLine(p_zero_s.tolist()[0:3], p_fz_s.tolist()[0:3], [0, 1, 0],
                                                                parentObjectUniqueId=robot_id,
                                                                parentLinkIndex=link_idx,
                                                                replaceItemUniqueId=db_graph["ftz"][link_idx])
-                print(s["Tsc"][0:3, 3])
         else:
             pass
 
