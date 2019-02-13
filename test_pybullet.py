@@ -31,7 +31,7 @@ urdf_file_path = "../bluerov_ffg/urdf/brov2.urdf"
 
 brov2 = get_robot(urdf_file_path)
 
-boxId = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=p.URDF_USE_INERTIA_FROM_FILE)
+robot_id = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=p.URDF_USE_INERTIA_FROM_FILE)
 
 k = np.array([
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@ixx"],
@@ -49,32 +49,48 @@ l_q_st = [
     from_euler_angles(-np.pi / 4, np.pi / 3, 0),
     from_euler_angles(-np.pi / 4, -np.pi / 3, 0),
     from_euler_angles(np.pi / 4, -np.pi / 3, 0),
-    ]
+]
 
+db_graph = {}
+# dbgraph["x"] = p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
+# dbgraph["y"] = p.addUserDebugLine([0, 0, 0], [0, 1, 0], [0, 1, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
+# dbgraph["z"] = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
 
-p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=boxId, parentLinkIndex=-1)
-p.addUserDebugLine([0, 0, 0], [0, 1, 0], [0, 1, 0], parentObjectUniqueId=boxId, parentLinkIndex=-1)
-p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=boxId, parentLinkIndex=-1)
+db_graph["w_c"] = w_c = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [1, 0, 0], parentObjectUniqueId=robot_id,
+                                           parentLinkIndex=-1)
+db_graph["ftz"] = []
+
+for link_idx in range(0, 6):
+    db_graph["ftz"].append(p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 1, 0],
+                                              parentObjectUniqueId=robot_id,
+                                              parentLinkIndex=link_idx))
 
 # s - origin
 # t - target
 # c - center of gravity
 
-
 def get_state():
     s = {}
-    t_sc, q_sc = p.getBasePositionAndOrientation(boxId)
-    t_sc = np.array(t_sc)
+    t_sc, q_sc = p.getBasePositionAndOrientation(robot_id)
+    t_sc = np.array(t_sc, ndmin=2).T
     q_sc = nq.quaternion(q_sc[3], q_sc[0], q_sc[1], q_sc[2])
     R_sc = as_rotation_matrix(q_sc)
     R_cs = as_rotation_matrix(q_sc).T
-    v_s, w_s = p.getBaseVelocity(boxId)
+
+    Tsc = np.zeros((4, 4))
+    Tsc[0:3, 0:3] = R_sc
+    Tsc[0:3, 3:] = t_sc
+    Tsc[3, 3] = 1
+
+    Tcs = np.linalg.inv(Tsc)
+
+    v_s, w_s = p.getBaseVelocity(robot_id)
     v_s = np.array(v_s)
     w_s = np.array(w_s)
     w_c = R_cs @ w_s
     v_c = R_cs @ v_s
 
-    return {"q_sc": q_sc, "w_c": w_c}
+    return {"q_sc": q_sc, "w_c": w_c, "Tsc": Tsc, "Tcs": Tcs}
 
 
 ctrl = ControlType.FORCE
@@ -99,24 +115,54 @@ for q_st in l_q_st:
             M_c[0] = np.sign(M_c[0]) * np.minimum(np.abs(M_c[0]), 3)
             M_c[1] = np.sign(M_c[1]) * np.minimum(np.abs(M_c[1]), 3)
             M_c[2] = np.sign(M_c[2]) * np.minimum(np.abs(M_c[2]), 3)
-            p.applyExternalTorque(boxId, -1, M_c, flags=p.WORLD_FRAME)  # TODO bug in pybullet. WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
+            p.applyExternalTorque(robot_id, -1, M_c, flags=p.WORLD_FRAME)
+            # TODO bug in pybullet.
+            # TODO WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
         elif ctrl == ControlType.FORCE:
             ftz = get_ftz_from_F_c(np.concatenate((M_c, np.zeros((3,)))))
+            ftz_max = np.max(np.abs(ftz))
+            ftz_lim = 2
+
             for link_idx, ftz_i in enumerate(ftz):
-                p.applyExternalForce(boxId, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
+
+                if ftz_max > ftz_lim:
+                    ftz_i = ftz_i*ftz_lim/ftz_max
+
+                ftz_i = np.sign(ftz_i) * np.minimum(np.abs(ftz_i), 2)
+
+                p.applyExternalForce(robot_id, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
+
+                p_zero_t = np.array([0, 0, 0, 1])
+                p_fz_t = np.array([0, 0, -ftz_i*1, 1])
+
+                Tct = brov2["robot"]["joint"][link_idx]["Tct"]
+
+                p_zero_s = s["Tsc"] @ Tct @ p_zero_t
+                p_fz_s = s["Tsc"] @ Tct @ p_fz_t
+
+                db_graph["ftz"][link_idx] = p.addUserDebugLine(p_zero_s.tolist()[0:3], p_fz_s.tolist()[0:3], [0, 1, 0],
+                                                               parentObjectUniqueId=robot_id,
+                                                               parentLinkIndex=link_idx,
+                                                               replaceItemUniqueId=db_graph["ftz"][link_idx])
+                print(s["Tsc"][0:3, 3])
         else:
             pass
 
-        if np.abs(prev_q_tc_w - q_tc.w) > 0.01:
-            prev_q_tc_w = q_tc.w
+        db_graph["w_c"] = p.addUserDebugLine([0, 0, 0], list(s["w_c"]), [1, 0, 0],
+                                             parentObjectUniqueId=robot_id,
+                                             parentLinkIndex=-1,
+                                             replaceItemUniqueId=db_graph["w_c"])
+
+        # if np.abs(prev_q_tc_w - q_tc.w) > 0.01:
+        #     prev_q_tc_w = q_tc.w
 
         p.stepSimulation()
 
-        time.sleep(1./240.)
+        time.sleep(1. / 240.)
 
 p.disconnect()
 
-
+# TODO write video
 # import cv2
 # import pyautogui
 #
