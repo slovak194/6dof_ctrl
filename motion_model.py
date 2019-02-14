@@ -37,10 +37,10 @@ def get_robot_parameters():
         Tct[0:3, 0:3] = Q
         Tct = sp.Matrix(Tct)
 
-        print(" ")
-        print(thruster["@name"])
-        pprint(Tct)
-        print(" ")
+        # print(" ")
+        # print(thruster["@name"])
+        # pprint(Tct)
+        # print(" ")
 
         R = Tct[0:3, 0:3]
         p = Tct[0:3, 3:]
@@ -94,23 +94,24 @@ def get_get_ftz_from_F_c():
 
     return {
         "lambda": sp.lambdify((F_c,), ftz_from_F_c_result, 'numpy'),
+        "s_lambda": sp.lambdify((F_c,), ftz_from_F_c_result, 'sympy'),
         "result": ftz_from_F_c_result,
         "expr": ftz_from_F_c_expr,
         "J_wrt_F_c": ftz_from_F_c_result.jacobian(F_c)
     }
 
 
+G_c = sp.Matrix.zeros(6, 6)
+G_c[0:3, 0:3] = robot["I_c"]
+G_c[3:, 3:] = robot["m"] * sp.Matrix.eye(3)
+V_c = sp.Matrix([sp.Matrix(sp.symarray('w', 3)), sp.Matrix(sp.symarray('v', 3))])
+
+dV_c = sp.Matrix([sp.Matrix(sp.symarray('dw', 3)), sp.Matrix(sp.symarray('dv', 3))])
+AdV_c = adv(V_c)
+
+
 def get_get_ftz_from_V_c_dV_c():
-    G_c = sp.Matrix.zeros(6, 6)
-    G_c[0:3, 0:3] = robot["I_c"]
-    G_c[3:, 3:] = robot["m"] * sp.Matrix.eye(3)
-
-    V_c = sp.Matrix([sp.Matrix(sp.symarray('w', 3)), sp.Matrix(sp.symarray('v', 3))])
-    dV_c = sp.Matrix([sp.Matrix(sp.symarray('dw', 3)), sp.Matrix(sp.symarray('dv', 3))])
-    AdV_c = adv(V_c)
-
     ftz_from_V_c_dV_c_expr = G_c * dV_c - AdV_c.T * G_c * V_c - robot["F_c_summ"]
-
     ftz_from_V_c_dV_c_result = sp.Matrix([sp.solve(ftz_from_V_c_dV_c_expr, robot["ftz"])[key] for key in robot["ftz"]])
 
     return {
@@ -122,11 +123,32 @@ def get_get_ftz_from_V_c_dV_c():
     }
 
 
-if __name__ == '__main__':
-    get_ftz_from_F_c = get_get_ftz_from_F_c()
-    print(get_ftz_from_F_c["lambda"](np.array([3, 1, 1, 0, 0, 0])))
-    pprint(get_ftz_from_F_c["J_wrt_F_c"])
+def get_pose_control():
+    p = sp.Matrix(sp.symarray('p', 3))
+    h = sp.Matrix(sp.symarray('h', 3))
+    k = sp.Matrix(sp.symarray('k', 3))
 
+    q_tc = sophus.Quaternion(sp.Symbol('qw'), sp.Matrix(sp.symbols('qx qy qz')))
+
+    so3_c = sophus.So3(q_tc)
+    se3_c = sophus.Se3(so3_c, p)
+
+    M_c = -h * V_c[0:3] - k * q_tc.real * q_tc.vec
+
+    return M_c
+
+
+if __name__ == '__main__':
+
+    a = get_pose_control()
+
+    print(a)
+
+    get_ftz_from_F_c = get_get_ftz_from_F_c()
+    pprint(get_ftz_from_F_c["s_lambda"](sp.Matrix(sp.symarray("F", 6))))
+
+    # pprint(get_ftz_from_F_c["J_wrt_F_c"])
+    #
     get_ftz_from_V_c_dV_c = get_get_ftz_from_V_c_dV_c()
     print(get_ftz_from_V_c_dV_c["lambda"](np.array([0, 0, 0, 0, 0, 0]), np.array([0, 0, 0.1, 0, 0, 0])))
 

@@ -191,7 +191,7 @@ for q_st in l_q_st:
         #     prev_q_tc_w = q_tc.w
 
         p.stepSimulation()
-        capture_frame()
+        # capture_frame()
 
         time.sleep(1. / 240.)
 
