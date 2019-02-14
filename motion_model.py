@@ -133,9 +133,12 @@ def get_pose_control():
     so3_c = sophus.So3(q_tc)
     se3_c = sophus.Se3(so3_c, p)
 
-    M_c = -h * V_c[0:3] - k * q_tc.real * q_tc.vec
+    #
+    # sp.matrices.dense.matrix_multiply_elementwise(A, B)
+    #
+    # M_c = -h * V_c[0:3] - k * q_tc.real * q_tc.vec
 
-    return M_c
+    return so3_c
 
 
 if __name__ == '__main__':
