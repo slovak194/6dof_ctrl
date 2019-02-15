@@ -43,17 +43,24 @@ w_gain = q_gain
 w_gain = w_gain * 200.0
 q_gain = q_gain * 1000.0
 
-v_gain = np.array([1.0, 1.0, 1.0]) * 50
+v_gain = np.array([1.0, 1.0, 1.0]) * 500
 t_gain = np.array([1.0, 1.0, 1.0]) * 100
 
 ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
-l_q_st = [
-    from_euler_angles(np.pi / 4, np.pi / 3, 0),
-    from_euler_angles(-np.pi / 4, np.pi / 3, 0),
-    from_euler_angles(-np.pi / 4, -np.pi / 3, 0),
-    from_euler_angles(np.pi / 4, -np.pi / 3, 0),
+l_T_st = [
+    {"t_st": np.array([1.0, 1.0, 1.0]), "q_st": from_euler_angles(np.pi / 4, np.pi / 3, 0)},
+    {"t_st": np.array([-1.0, 1.0, 1.0]), "q_st": from_euler_angles(-np.pi / 4, np.pi / 3, 0)},
+    {"t_st": np.array([-1.0, -1.0, 1.0]), "q_st": from_euler_angles(-np.pi / 4, -np.pi / 3, 0)},
+    {"t_st": np.array([1.0, -1.0, 1.0]), "q_st": from_euler_angles(np.pi / 4, -np.pi / 3, 0)},
 ]
+
+# l_T_st = [
+#     {"t_st": np.array([1.0, 1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+#     {"t_st": np.array([-1.0, 1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+#     {"t_st": np.array([-1.0, -1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+#     {"t_st": np.array([1.0, -1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+# ]
 
 db_graph = {}
 # dbgraph["x"] = p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
@@ -73,39 +80,6 @@ for link_idx in range(0, 6):
 # s - origin
 # t - target
 # c - center of gravity
-
-
-def capture_frame():
-    camTargetPos = [0., 0., 0.]
-    cameraUp = [0, 0, 1]
-    cameraPos = [1, 1, 1]
-    yaw = 40
-    pitch = 10.0
-
-    roll = 0
-    upAxisIndex = 2
-    camDistance = 4
-    pixelWidth = 320
-    pixelHeight = 240
-    nearPlane = 0.01
-    farPlane = 1000
-    lightDirection = [0, 1, 0]
-    lightColor = [1, 1, 1]  # optional argument
-    fov = 60
-
-    viewMatrix = p.computeViewMatrixFromYawPitchRoll(camTargetPos, camDistance, yaw, pitch, roll, upAxisIndex)
-    aspect = pixelWidth / pixelHeight
-    projectionMatrix = p.computeProjectionMatrixFOV(fov, aspect, nearPlane, farPlane)
-    img_arr = p.getCameraImage(pixelWidth, pixelHeight, viewMatrix, projectionMatrix, lightDirection, lightColor)
-    w = img_arr[0]
-    h = img_arr[1]
-    rgb = img_arr[2]
-    dep = img_arr[3]
-    # print 'width = %d height = %d' % (w,h)
-    # reshape creates np array
-    np_img_arr = np.reshape(rgb, (h, w, 4))
-    np_img_arr = np_img_arr * (1. / 255.)
-
 
 def get_state():
     s = {}
@@ -138,24 +112,28 @@ def get_state():
 
 pose_control = get_pose_control()["lambda"]
 
-for q_st in l_q_st:
+for T_st in l_T_st:
     s = get_state()
 
-    q_ts = q_st.conj()
+    q_ts = T_st["q_st"].conj()
     q_tc = q_ts * s["q_sc"]
+    t_diff = np.linalg.norm(s["t_sc"] - T_st["t_st"])
 
-    prev_q_tc_w = q_tc.w
+ #    np.linalg.norm(s["w_c"]) > 0.1 or \
+ #    np.linalg.norm(s["v_c"]) > 0.1 or \
 
-    while q_tc.w < 0.99 or np.linalg.norm(s["w_c"]) > 0.1:
-
+    while q_tc.w < 0.99 or t_diff > 0.5:
         s = get_state()
-        q_ts = q_st.conj()
+        q_ts = T_st["q_st"].conj()
         q_tc = q_ts * s["q_sc"]
+        t_diff = np.linalg.norm(s["t_sc"].squeeze() - T_st["t_st"])
+        print(s["t_sc"])
+        print(T_st["t_st"])
+        print(t_diff)
 
-        t_st = np.array([0.0, 1.0, 1.0])
         F_c = pose_control(s["t_sc"], as_float_array(s["q_sc"]),
                            s["w_c"], s["v_c"],
-                           t_st, as_float_array(q_st), ctrl_gains).squeeze()
+                           T_st["t_st"], as_float_array(T_st["q_st"]), ctrl_gains).squeeze()
 
         ftz = get_ftz_from_F_c(F_c)
         ftz_max = np.max(np.abs(ftz))
@@ -185,11 +163,7 @@ for q_st in l_q_st:
                                              parentLinkIndex=-1,
                                              replaceItemUniqueId=db_graph["w_c"])
 
-        # if np.abs(prev_q_tc_w - q_tc.w) > 0.01:
-        #     prev_q_tc_w = q_tc.w
-
         p.stepSimulation()
-        # capture_frame()
 
         time.sleep(1. / 240.)
 
