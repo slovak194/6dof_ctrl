@@ -113,6 +113,7 @@ AdV_c = adv(V_c)
 
 
 def get_get_ftz_from_V_c_dV_c():
+    # (8.40) MODERN ROBOTICS MECHANICS, PLANNING, AND CONTROL Kevin M. Lynch and Frank C. Park May 3, 2017
     ftz_from_V_c_dV_c_expr = G_c * dV_c - AdV_c.T * G_c * V_c - robot["F_c_summ"]
     ftz_from_V_c_dV_c_result = sp.Matrix([sp.solve(ftz_from_V_c_dV_c_expr, robot["ftz"])[key] for key in robot["ftz"]])
 
@@ -145,13 +146,16 @@ def get_pose_control():
     ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
     T_tc = T_st.inverse() * T_sc
-    q_tc = T_tc.so3.q
+    # q_tc = T_tc.so3.q
+    # p_tc = T_tc.t
 
-    m_c = sp.matrix_multiply_elementwise(-w_gain, w_c) + sp.matrix_multiply_elementwise(-q_gain, q_tc.vec) * q_tc.real
+    T_ct = T_tc.inverse()
 
-    p_tc = T_tc.t
+    m_c = sp.matrix_multiply_elementwise(-w_gain, w_c) + \
+          sp.matrix_multiply_elementwise(q_gain, T_ct.so3.q.vec) * T_ct.so3.q.real
 
-    f_c = sp.matrix_multiply_elementwise(-v_gain, v_c) + sp.matrix_multiply_elementwise(-t_gain, p_tc)
+    f_c = sp.matrix_multiply_elementwise(-v_gain, v_c) + \
+          sp.matrix_multiply_elementwise(t_gain, T_ct.t)
 
     F_c = m_c.col_join(f_c)
     return {

@@ -18,6 +18,8 @@ get_ftz_from_F_c = mm.get_get_ftz_from_F_c()["lambda"]
 pose_control = mm.get_pose_control()["lambda"]
 # pose_control = mm.get_get_dV_c_from_target_T()["lambda"]
 
+# get_ftz_from_V_c_dV_c = mm.get_get_ftz_from_V_c_dV_c()["lambda"]
+
 physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 p.setGravity(0, 0, 0)
@@ -37,10 +39,10 @@ robot_id = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=
 pi = np.pi
 
 l_T_st_6dpf = [
-    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/4, 0)},
-    {"t_st": np.array([-0.5, 0.5, 1.0]), "q_st": from_euler_angles(-pi/4, pi/4, 0)},
-    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/4, 0)},
-    {"t_st": np.array([-0.5, -0.5, 1.0]), "q_st": from_euler_angles(pi/4, pi/4, 0)},
+    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/3, 0)},
+    {"t_st": np.array([-0.5, 0.5, 1.0]), "q_st": from_euler_angles(-pi/3, pi/3, 0)},
+    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/3, 0)},
+    {"t_st": np.array([-0.5, -0.5, 1.0]), "q_st": from_euler_angles(pi/3, pi/3, 0)},
 ]
 
 l_T_st_translation = [
@@ -73,11 +75,14 @@ l_T_st = l_T_st_6dpf
 # l_T_st = l_T_st_translation
 # l_T_st = l_T_st_rotation
 
-w_gain = w_gain * 1
-q_gain = q_gain * 1
+w_gain = w_gain * 10
+q_gain = q_gain * 10
+#
+# w_gain = np.array([1.0, 1.0, 1.0]) * 1
+# q_gain = np.array([1.0, 1.0, 1.0]) * 1
 
-v_gain = np.array([1.0, 1.0, 1.0]) * 1
-t_gain = np.array([1.0, 1.0, 1.0]) * 1
+v_gain = np.array([1.0, 1.0, 1.0]) * 10
+t_gain = np.array([1.0, 1.0, 1.0]) * 10
 
 ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
@@ -110,12 +115,12 @@ def get_state():
     R_sc = as_rotation_matrix(q_sc)
     R_cs = as_rotation_matrix(q_sc).T
 
-    Tsc = np.zeros((4, 4))
-    Tsc[0:3, 0:3] = R_sc
-    Tsc[0:3, 3:] = t_sc
-    Tsc[3, 3] = 1
+    T_sc = np.zeros((4, 4))
+    T_sc[0:3, 0:3] = R_sc
+    T_sc[0:3, 3:] = t_sc
+    T_sc[3, 3] = 1
 
-    Tcs = np.linalg.inv(Tsc)
+    T_cs = np.linalg.inv(T_sc)
 
     v_s, w_s = p.getBaseVelocity(robot_id)
     v_s = np.array(v_s)
@@ -127,10 +132,22 @@ def get_state():
             "q_sc": q_sc,
             "w_c": w_c,
             "v_c": v_c,
-            "Tsc": Tsc,
-            "Tcs": Tcs}
+            "V_c": np.concatenate((w_c, v_c)),
+            "T_sc": T_sc,
+            "T_cs": T_cs,
+            "R_cs": R_cs,
+            "R_sc": R_sc,
+            }
 
 
+def normalize_ftz(ftz_in):
+    ftz_max = np.max(np.abs(ftz_in))
+    ftz_lim = 40
+
+    assert(ftz_max < ftz_lim)
+
+    if ftz_max > ftz_lim:
+        return ftz_in * ftz_lim / ftz_max
 
 
 damping = False
@@ -153,13 +170,15 @@ for T_st in l_T_st:
                            T_st["t_st"], as_float_array(T_st["q_st"]), ctrl_gains).squeeze()
 
         ftz = get_ftz_from_F_c(F_c)
-        ftz_max = np.max(np.abs(ftz))
-        ftz_lim = 40
 
-        # assert(ftz_max < ftz_lim)
+        # dV_s = np.array([[0, 0, 0, 1, 0, 0]]).T
+        # dw_c = s["R_cs"] @ dV_s[0:3]
+        # dv_c = s["R_cs"] @ dV_s[3:]
+        # dV_c = np.concatenate((dw_c, dv_c))
+        # ftz = get_ftz_from_V_c_dV_c(s["V_c"], dV_c.squeeze())
 
-        if ftz_max > ftz_lim:
-            ftz = ftz * ftz_lim / ftz_max
+        # Normalize if needed
+        # ftz = normalize_ftz(ftz)
 
         if damping:
             # Apply damping from water
@@ -179,7 +198,7 @@ for T_st in l_T_st:
             p_zero_t = np.array([0, 0, 0, 1])
             p_fz_t = np.array([0, 0, ftz_i, 1])
             Tct = brov2["robot"]["joint"][link_idx]["Tct"]
-            Tsc = s["Tsc"]
+            Tsc = s["T_sc"]
             p_zero_s = Tsc @ Tct @ p_zero_t
             p_fz_s = Tsc @ Tct @ p_fz_t
 
