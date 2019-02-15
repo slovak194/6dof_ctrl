@@ -14,10 +14,8 @@ from pyxacro import get_robot
 import motion_model as mm
 
 get_ftz_from_F_c = mm.get_get_ftz_from_F_c()["lambda"]
-
 pose_control = mm.get_pose_control()["lambda"]
 # pose_control = mm.get_get_dV_c_from_target_T()["lambda"]
-
 # get_ftz_from_V_c_dV_c = mm.get_get_ftz_from_V_c_dV_c()["lambda"]
 
 physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
@@ -39,10 +37,12 @@ robot_id = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=
 pi = np.pi
 
 l_T_st_6dpf = [
-    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/3, 0)},
-    {"t_st": np.array([-0.5, 0.5, 1.0]), "q_st": from_euler_angles(-pi/3, pi/3, 0)},
-    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/3, 0)},
-    {"t_st": np.array([-0.5, -0.5, 1.0]), "q_st": from_euler_angles(pi/3, pi/3, 0)},
+    {"t_st": np.array([-0.5, 0.0, 1.3]), "q_st": from_euler_angles(0, pi/6, 0)},
+    {"t_st": np.array([-0.5, 0.5, 1.3]), "q_st": from_euler_angles(-pi/4, pi/6, 0)},
+    {"t_st": np.array([-0.5, 0.5, 0.7]), "q_st": from_euler_angles(-pi/4, -pi/6, 0)},
+    {"t_st": np.array([-0.5, 0.0, 0.7]), "q_st": from_euler_angles(0, pi/6, 0)},
+    {"t_st": np.array([-0.5, -0.5, 0.7]), "q_st": from_euler_angles(0, pi/6, 0)},
+    {"t_st": np.array([-0.5, 0.0, 0.7]), "q_st": from_euler_angles(pi/4, -pi/6, 0)},
 ]
 
 l_T_st_translation = [
@@ -75,14 +75,11 @@ l_T_st = l_T_st_6dpf
 # l_T_st = l_T_st_translation
 # l_T_st = l_T_st_rotation
 
-w_gain = w_gain * 10
 q_gain = q_gain * 10
-#
-# w_gain = np.array([1.0, 1.0, 1.0]) * 1
-# q_gain = np.array([1.0, 1.0, 1.0]) * 1
+w_gain = w_gain * 10
 
-v_gain = np.array([1.0, 1.0, 1.0]) * 10
 t_gain = np.array([1.0, 1.0, 1.0]) * 10
+v_gain = np.array([1.0, 1.0, 1.0]) * 10
 
 ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
@@ -159,7 +156,11 @@ for T_st in l_T_st:
     q_tc = q_ts * s["q_sc"]
     t_diff = np.linalg.norm(s["t_sc"] - T_st["t_st"])
 
-    while q_tc.w < 0.99 or t_diff > 0.5 or np.linalg.norm(s["w_c"]) > 0.1 or np.linalg.norm(s["v_c"]) > 0.1:
+    while q_tc.w < 0.999 or \
+            t_diff > 0.3 or \
+            np.linalg.norm(s["w_c"]) > 0.1 or \
+            np.linalg.norm(s["v_c"]) > 0.1:
+        
         s = get_state()
         q_ts = T_st["q_st"].conj()
         q_tc = q_ts * s["q_sc"]

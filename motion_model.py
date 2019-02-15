@@ -145,11 +145,7 @@ def get_pose_control():
 
     ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
-    T_tc = T_st.inverse() * T_sc
-    # q_tc = T_tc.so3.q
-    # p_tc = T_tc.t
-
-    T_ct = T_tc.inverse()
+    T_ct = (T_st.inverse() * T_sc).inverse()
 
     m_c = sp.matrix_multiply_elementwise(-w_gain, w_c) + \
           sp.matrix_multiply_elementwise(q_gain, T_ct.so3.q.vec) * T_ct.so3.q.real
@@ -173,14 +169,13 @@ def get_get_dV_c_from_target_T():
 
     ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
-    T_tc = T_st.inverse() * T_sc
-    q_tc = T_tc.so3.q
+    T_ct = (T_st.inverse() * T_sc).inverse()
 
-    dw_c = sp.matrix_multiply_elementwise(-w_gain, w_c) + sp.matrix_multiply_elementwise(-q_gain, q_tc.vec) * q_tc.real
+    dw_c = sp.matrix_multiply_elementwise(-w_gain, w_c) + \
+          sp.matrix_multiply_elementwise(q_gain, T_ct.so3.q.vec) * T_ct.so3.q.real
 
-    p_tc = T_tc.t
-
-    dv_c = sp.matrix_multiply_elementwise(-v_gain, v_c) + sp.matrix_multiply_elementwise(-t_gain, p_tc)
+    dv_c = sp.matrix_multiply_elementwise(-v_gain, v_c) + \
+          sp.matrix_multiply_elementwise(t_gain, T_ct.t)
 
     dV_c_target = dw_c.col_join(dv_c)
 
