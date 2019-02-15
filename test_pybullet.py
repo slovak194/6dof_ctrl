@@ -32,42 +32,61 @@ brov2 = get_robot(urdf_file_path)
 
 robot_id = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=p.URDF_USE_INERTIA_FROM_FILE)
 
+pi = np.pi
+
+l_T_st_6dpf = [
+    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/4, 0)},
+    {"t_st": np.array([-0.5, 0.5, 1.0]), "q_st": from_euler_angles(-pi/4, pi/4, 0)},
+    {"t_st": np.array([-0.5, 0.0, 1.0]), "q_st": from_euler_angles(0, pi/4, 0)},
+    {"t_st": np.array([-0.5, -0.5, 1.0]), "q_st": from_euler_angles(pi/4, pi/4, 0)},
+]
+
+l_T_st_translation = [
+    {"t_st": np.array([1.0, 1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+    {"t_st": np.array([-1.0, 1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+    {"t_st": np.array([-1.0, -1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+    {"t_st": np.array([1.0, -1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
+]
+
+l_T_st_rotation = [
+    {"t_st": np.array([0.0, 0.0, 1.0]), "q_st": from_euler_angles(pi/4, pi/3, 0)},
+    {"t_st": np.array([0.0, 0.0, 1.0]), "q_st": from_euler_angles(-pi/4, pi/3, 0)},
+    {"t_st": np.array([0.0, 0.0, 1.0]), "q_st": from_euler_angles(-pi/4, -pi/3, 0)},
+    {"t_st": np.array([0.0, 0.0, 1.0]), "q_st": from_euler_angles(pi/4, -pi/3, 0)},
+]
+
 q_gain = np.array([
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@ixx"],
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@iyy"],
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@izz"]
 ], dtype=np.float64)
 
-w_gain = q_gain
+w_gain = np.array([
+    brov2["robot"]["link"][0]["inertial"]["inertia"]["@ixx"],
+    brov2["robot"]["link"][0]["inertial"]["inertia"]["@iyy"],
+    brov2["robot"]["link"][0]["inertial"]["inertia"]["@izz"]
+], dtype=np.float64)
 
-w_gain = w_gain * 200.0
-q_gain = q_gain * 1000.0
+l_T_st = l_T_st_6dpf
+# l_T_st = l_T_st_translation
+# l_T_st = l_T_st_rotation
 
-v_gain = np.array([1.0, 1.0, 1.0]) * 500
-t_gain = np.array([1.0, 1.0, 1.0]) * 100
+w_gain = w_gain * 10
+q_gain = q_gain * 10
+
+v_gain = np.array([1.0, 1.0, 1.0]) * 10
+t_gain = np.array([1.0, 1.0, 1.0]) * 5
 
 ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
-l_T_st = [
-    {"t_st": np.array([1.0, 1.0, 1.0]), "q_st": from_euler_angles(np.pi / 4, np.pi / 3, 0)},
-    {"t_st": np.array([-1.0, 1.0, 1.0]), "q_st": from_euler_angles(-np.pi / 4, np.pi / 3, 0)},
-    {"t_st": np.array([-1.0, -1.0, 1.0]), "q_st": from_euler_angles(-np.pi / 4, -np.pi / 3, 0)},
-    {"t_st": np.array([1.0, -1.0, 1.0]), "q_st": from_euler_angles(np.pi / 4, -np.pi / 3, 0)},
-]
 
-# l_T_st = [
-#     {"t_st": np.array([1.0, 1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
-#     {"t_st": np.array([-1.0, 1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
-#     {"t_st": np.array([-1.0, -1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
-#     {"t_st": np.array([1.0, -1.0, 1.0]), "q_st": from_euler_angles(0, 0, 0)},
-# ]
 
 db_graph = {}
 # dbgraph["x"] = p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
 # dbgraph["y"] = p.addUserDebugLine([0, 0, 0], [0, 1, 0], [0, 1, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
 # dbgraph["z"] = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
 
-db_graph["w_c"] = w_c = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [1, 0, 0], parentObjectUniqueId=robot_id,
+db_graph["w_c"] = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [1, 0, 0], parentObjectUniqueId=robot_id,
                                            parentLinkIndex=-1)
 db_graph["ftz"] = []
 
@@ -119,17 +138,11 @@ for T_st in l_T_st:
     q_tc = q_ts * s["q_sc"]
     t_diff = np.linalg.norm(s["t_sc"] - T_st["t_st"])
 
- #    np.linalg.norm(s["w_c"]) > 0.1 or \
- #    np.linalg.norm(s["v_c"]) > 0.1 or \
-
-    while q_tc.w < 0.99 or t_diff > 0.5:
+    while q_tc.w < 0.99 or t_diff > 0.5 or np.linalg.norm(s["w_c"]) > 0.1 or np.linalg.norm(s["v_c"]) > 0.1:
         s = get_state()
         q_ts = T_st["q_st"].conj()
         q_tc = q_ts * s["q_sc"]
         t_diff = np.linalg.norm(s["t_sc"].squeeze() - T_st["t_st"])
-        print(s["t_sc"])
-        print(T_st["t_st"])
-        print(t_diff)
 
         F_c = pose_control(s["t_sc"], as_float_array(s["q_sc"]),
                            s["w_c"], s["v_c"],
@@ -137,17 +150,22 @@ for T_st in l_T_st:
 
         ftz = get_ftz_from_F_c(F_c)
         ftz_max = np.max(np.abs(ftz))
-        ftz_lim = 1
+        ftz_lim = 40
+
+        assert(ftz_max < ftz_lim)
 
         if ftz_max > ftz_lim:
             ftz = ftz * ftz_lim / ftz_max
 
         for link_idx, ftz_i in enumerate(np.nditer(ftz)):
+            # Apply control forces
             p.applyExternalForce(robot_id, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
 
+            # Apply damping from water
+
+            # Visualize
             p_zero_t = np.array([0, 0, 0, 1])
             p_fz_t = np.array([0, 0, ftz_i, 1])
-
             Tct = brov2["robot"]["joint"][link_idx]["Tct"]
             Tsc = s["Tsc"]
             p_zero_s = Tsc @ Tct @ p_zero_t
