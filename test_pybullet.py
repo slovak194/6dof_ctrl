@@ -6,17 +6,13 @@ from enum import Enum
 import numpy as np
 from quaternion import from_euler_angles
 from quaternion import as_rotation_matrix
+from quaternion import as_float_array
 
 import quaternion as nq
 
 from pyxacro import get_robot
 from motion_model import get_get_ftz_from_F_c
-
-
-class ControlType(Enum):
-    TORQUE = 1
-    FORCE = 2
-
+from motion_model import get_pose_control
 
 get_ftz_from_F_c = get_get_ftz_from_F_c()["lambda"]
 
@@ -36,16 +32,21 @@ brov2 = get_robot(urdf_file_path)
 
 robot_id = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=p.URDF_USE_INERTIA_FROM_FILE)
 
-k = np.array([
+q_gain = np.array([
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@ixx"],
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@iyy"],
     brov2["robot"]["link"][0]["inertial"]["inertia"]["@izz"]
 ], dtype=np.float64)
 
-h = k
+w_gain = q_gain
 
-h = h * 200.0
-k = k * 1000.0
+w_gain = w_gain * 200.0
+q_gain = q_gain * 1000.0
+
+v_gain = np.array([1.0, 1.0, 1.0]) * 50
+t_gain = np.array([1.0, 1.0, 1.0]) * 100
+
+ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
 l_q_st = [
     from_euler_angles(np.pi / 4, np.pi / 3, 0),
@@ -68,42 +69,42 @@ for link_idx in range(0, 6):
                                               parentObjectUniqueId=robot_id,
                                               parentLinkIndex=link_idx))
 
+
 # s - origin
 # t - target
 # c - center of gravity
 
 
 def capture_frame():
-    camTargetPos = [0.,0.,0.]
-    cameraUp = [0,0,1]
-    cameraPos = [1,1,1]
+    camTargetPos = [0., 0., 0.]
+    cameraUp = [0, 0, 1]
+    cameraPos = [1, 1, 1]
     yaw = 40
     pitch = 10.0
 
-    roll=0
+    roll = 0
     upAxisIndex = 2
     camDistance = 4
     pixelWidth = 320
     pixelHeight = 240
     nearPlane = 0.01
     farPlane = 1000
-    lightDirection = [0,1,0]
-    lightColor = [1,1,1]#optional argument
+    lightDirection = [0, 1, 0]
+    lightColor = [1, 1, 1]  # optional argument
     fov = 60
 
     viewMatrix = p.computeViewMatrixFromYawPitchRoll(camTargetPos, camDistance, yaw, pitch, roll, upAxisIndex)
     aspect = pixelWidth / pixelHeight
     projectionMatrix = p.computeProjectionMatrixFOV(fov, aspect, nearPlane, farPlane)
-    img_arr = p.getCameraImage(pixelWidth, pixelHeight, viewMatrix,projectionMatrix, lightDirection,lightColor)
-    w=img_arr[0]
-    h=img_arr[1]
-    rgb=img_arr[2]
-    dep=img_arr[3]
-    #print 'width = %d height = %d' % (w,h)
+    img_arr = p.getCameraImage(pixelWidth, pixelHeight, viewMatrix, projectionMatrix, lightDirection, lightColor)
+    w = img_arr[0]
+    h = img_arr[1]
+    rgb = img_arr[2]
+    dep = img_arr[3]
+    # print 'width = %d height = %d' % (w,h)
     # reshape creates np array
     np_img_arr = np.reshape(rgb, (h, w, 4))
-    np_img_arr = np_img_arr*(1./255.)
-
+    np_img_arr = np_img_arr * (1. / 255.)
 
 
 def get_state():
@@ -127,11 +128,15 @@ def get_state():
     w_c = R_cs @ w_s
     v_c = R_cs @ v_s
 
-    return {"q_sc": q_sc, "w_c": w_c, "Tsc": Tsc, "Tcs": Tcs}
+    return {"t_sc": t_sc,
+            "q_sc": q_sc,
+            "w_c": w_c,
+            "v_c": v_c,
+            "Tsc": Tsc,
+            "Tcs": Tcs}
 
 
-ctrl = ControlType.FORCE
-# ctrl = ControlType.TORQUE
+pose_control = get_pose_control()["lambda"]
 
 for q_st in l_q_st:
     s = get_state()
@@ -141,46 +146,39 @@ for q_st in l_q_st:
 
     prev_q_tc_w = q_tc.w
 
-    while q_tc.w < 0.999 or np.linalg.norm(s["w_c"]) > 0.1:
+    while q_tc.w < 0.99 or np.linalg.norm(s["w_c"]) > 0.1:
 
         s = get_state()
+        q_ts = q_st.conj()
         q_tc = q_ts * s["q_sc"]
 
-        M_c = -h * s["w_c"] - k * q_tc.w * q_tc.vec
+        t_st = np.array([0.0, 1.0, 1.0])
+        F_c = pose_control(s["t_sc"], as_float_array(s["q_sc"]),
+                           s["w_c"], s["v_c"],
+                           t_st, as_float_array(q_st), ctrl_gains).squeeze()
 
-        if ctrl == ControlType.TORQUE:
-            M_c[0] = np.sign(M_c[0]) * np.minimum(np.abs(M_c[0]), 3)
-            M_c[1] = np.sign(M_c[1]) * np.minimum(np.abs(M_c[1]), 3)
-            M_c[2] = np.sign(M_c[2]) * np.minimum(np.abs(M_c[2]), 3)
-            p.applyExternalTorque(robot_id, -1, M_c, flags=p.WORLD_FRAME)
-            # TODO bug in pybullet.
-            # TODO WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
-        elif ctrl == ControlType.FORCE:
-            ftz = get_ftz_from_F_c(np.concatenate((M_c, np.zeros((3,)))))
-            ftz_max = np.max(np.abs(ftz))
-            ftz_lim = 1
+        ftz = get_ftz_from_F_c(F_c)
+        ftz_max = np.max(np.abs(ftz))
+        ftz_lim = 1
 
-            if ftz_max > ftz_lim:
-                ftz = ftz*ftz_lim/ftz_max
+        if ftz_max > ftz_lim:
+            ftz = ftz * ftz_lim / ftz_max
 
-            for link_idx, ftz_i in enumerate(np.nditer(ftz)):
+        for link_idx, ftz_i in enumerate(np.nditer(ftz)):
+            p.applyExternalForce(robot_id, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
 
-                p.applyExternalForce(robot_id, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
+            p_zero_t = np.array([0, 0, 0, 1])
+            p_fz_t = np.array([0, 0, ftz_i, 1])
 
-                p_zero_t = np.array([0, 0, 0, 1])
-                p_fz_t = np.array([0, 0, ftz_i, 1])
+            Tct = brov2["robot"]["joint"][link_idx]["Tct"]
+            Tsc = s["Tsc"]
+            p_zero_s = Tsc @ Tct @ p_zero_t
+            p_fz_s = Tsc @ Tct @ p_fz_t
 
-                Tct = brov2["robot"]["joint"][link_idx]["Tct"]
-                Tsc = s["Tsc"]
-                p_zero_s = Tsc @ Tct @ p_zero_t
-                p_fz_s = Tsc @ Tct @ p_fz_t
-
-                db_graph["ftz"][link_idx] = p.addUserDebugLine(p_zero_s.tolist()[0:3], p_fz_s.tolist()[0:3], [0, 1, 0],
-                                                               parentObjectUniqueId=robot_id,
-                                                               parentLinkIndex=link_idx,
-                                                               replaceItemUniqueId=db_graph["ftz"][link_idx])
-        else:
-            pass
+            db_graph["ftz"][link_idx] = p.addUserDebugLine(p_zero_s.tolist()[0:3], p_fz_s.tolist()[0:3], [0, 1, 0],
+                                                           parentObjectUniqueId=robot_id,
+                                                           parentLinkIndex=link_idx,
+                                                           replaceItemUniqueId=db_graph["ftz"][link_idx])
 
         db_graph["w_c"] = p.addUserDebugLine([0, 0, 0], list(s["w_c"]), [1, 0, 0],
                                              parentObjectUniqueId=robot_id,
