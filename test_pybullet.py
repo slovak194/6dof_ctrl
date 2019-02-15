@@ -11,10 +11,12 @@ from quaternion import as_float_array
 import quaternion as nq
 
 from pyxacro import get_robot
-from motion_model import get_get_ftz_from_F_c
-from motion_model import get_pose_control
+import motion_model as mm
 
-get_ftz_from_F_c = get_get_ftz_from_F_c()["lambda"]
+get_ftz_from_F_c = mm.get_get_ftz_from_F_c()["lambda"]
+
+pose_control = mm.get_pose_control()["lambda"]
+# pose_control = mm.get_get_dV_c_from_target_T()["lambda"]
 
 physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
@@ -71,11 +73,11 @@ l_T_st = l_T_st_6dpf
 # l_T_st = l_T_st_translation
 # l_T_st = l_T_st_rotation
 
-w_gain = w_gain * 10
-q_gain = q_gain * 10
+w_gain = w_gain * 1
+q_gain = q_gain * 1
 
-v_gain = np.array([1.0, 1.0, 1.0]) * 10
-t_gain = np.array([1.0, 1.0, 1.0]) * 5
+v_gain = np.array([1.0, 1.0, 1.0]) * 1
+t_gain = np.array([1.0, 1.0, 1.0]) * 1
 
 ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
@@ -129,7 +131,9 @@ def get_state():
             "Tcs": Tcs}
 
 
-pose_control = get_pose_control()["lambda"]
+
+
+damping = False
 
 for T_st in l_T_st:
     s = get_state()
@@ -152,16 +156,24 @@ for T_st in l_T_st:
         ftz_max = np.max(np.abs(ftz))
         ftz_lim = 40
 
-        assert(ftz_max < ftz_lim)
+        # assert(ftz_max < ftz_lim)
 
         if ftz_max > ftz_lim:
             ftz = ftz * ftz_lim / ftz_max
 
+        if damping:
+            # Apply damping from water
+            M_c_damping = -10 * s["w_c"]
+            p.applyExternalTorque(robot_id, -1, M_c_damping.tolist(), flags=p.WORLD_FRAME)
+            # TODO bug in pybullet.
+            # TODO WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
+
+            F_c_damping = -10 * s["v_c"]
+            p.applyExternalForce(robot_id, -1, F_c_damping.tolist(), [0, 0, 0], flags=p.LINK_FRAME)
+
         for link_idx, ftz_i in enumerate(np.nditer(ftz)):
             # Apply control forces
             p.applyExternalForce(robot_id, link_idx, [0, 0, ftz_i], [0, 0, 0], flags=p.LINK_FRAME)
-
-            # Apply damping from water
 
             # Visualize
             p_zero_t = np.array([0, 0, 0, 1])
