@@ -13,7 +13,10 @@ import quaternion as nq
 from pyxacro import get_robot
 import motion_model as mm
 
-get_ftz_from_F_c = mm.get_get_ftz_from_F_c()["lambda"]
+urdf_file_path = "../bluerov_ffg/urdf/brov2.urdf"
+brov2 = get_robot(urdf_file_path)
+
+get_ftz_from_F_c = mm.get_get_ftz_from_F_c(urdf_file_path)["lambda"]
 pose_control = mm.get_pose_control()["lambda"]
 # pose_control = mm.get_get_dV_c_from_target_T()["lambda"]
 # get_ftz_from_V_c_dV_c = mm.get_get_ftz_from_V_c_dV_c()["lambda"]
@@ -27,10 +30,6 @@ p.setGravity(0, 0, 0)
 planeId = p.loadURDF("plane.urdf")
 cubeStartPos = [0, 0, 1]
 cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-
-urdf_file_path = "../bluerov_ffg/urdf/brov2.urdf"
-
-brov2 = get_robot(urdf_file_path)
 
 robot_id = p.loadURDF(urdf_file_path, cubeStartPos, cubeStartOrientation, flags=p.URDF_USE_INERTIA_FROM_FILE)
 
