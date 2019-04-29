@@ -25,9 +25,10 @@ def adv(v):
     return res
 
 
-def get_robot_parameters():
-    robot = get_robot("../bluerov_ffg/urdf/brov2.urdf")
+def get_robot_parameters(urdf_file_path):
+    robot = get_robot(urdf_file_path)
 
+    thrusters_mapping = sp.Matrix.zeros(6, 6)
     F_c_summ = sp.Matrix.zeros(6, 1)
     ftz = sp.Matrix(sp.symarray('ftz', len(robot["robot"]["joint"])))  # Along which axis???
 
@@ -49,11 +50,15 @@ def get_robot_parameters():
         se3_ct = sophus.Se3(so3_ct, p)
 
         F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, ftz[n, 0]])])
-        F_c = sophus.Se3.Adj(se3_ct.inverse()).T * F_t
+        # (3.95) Express wrench in another basis.
+        # MODERN ROBOTICS MECHANICS, PLANNING, AND CONTROL Kevin M. Lynch and Frank C. Park May 3, 2017
+        T_adj_tc = sophus.Se3.Adj(se3_ct.inverse()).T
+        F_c = T_adj_tc * F_t
 
         # pprint(F_c)
 
         F_c_summ += F_c
+        thrusters_mapping[:, n] = T_adj_tc * sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, 1])])
 
     m = robot["robot"]["link"][0]["inertial"]["mass"]["@value"]
     I_c = robot["robot"]["link"][0]["inertial"]["inertia"]
@@ -69,6 +74,7 @@ def get_robot_parameters():
                      [Ixz_c, Iyz_c, Izz_c]])
 
     robot["F_c_summ"] = F_c_summ
+    robot["thrusters_mapping"] = thrusters_mapping
     robot["ftz"] = ftz
     robot["I_c"] = I_c
     robot["m"] = m
@@ -76,7 +82,8 @@ def get_robot_parameters():
     return robot
 
 
-robot = get_robot_parameters()
+robot = get_robot_parameters("../bluerov_ffg/urdf/brov2.urdf")
+# robot = get_robot_parameters("../bluerov_ffg/urdf/brov2_original.urdf")
 
 
 def get_get_ftz_from_F_c():
@@ -91,6 +98,11 @@ def get_get_ftz_from_F_c():
     F_c = sp.Matrix([mc, fc])
     ftz_from_F_c_expr = robot["F_c_summ"] - F_c
     ftz_from_F_c_result = sp.Matrix(sp.linsolve(ftz_from_F_c_expr.values(), robot["ftz"].values()).args[0])
+
+
+    # A = robot["thrusters_mapping"]
+    # ftz_from_F_c_result = (A.T*A).inv()*A.T*F_c  # Least squares
+
 
     return {
         "lambda": sp.lambdify((F_c,), ftz_from_F_c_result, 'numpy'),
