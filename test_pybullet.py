@@ -85,9 +85,9 @@ ctrl_gains = (w_gain, q_gain, v_gain, t_gain)
 
 
 db_graph = {}
-# dbgraph["x"] = p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
-# dbgraph["y"] = p.addUserDebugLine([0, 0, 0], [0, 1, 0], [0, 1, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
-# dbgraph["z"] = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
+db_graph["x"] = p.addUserDebugLine([0, 0, 0], [1, 0, 0], [1, 0, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
+db_graph["y"] = p.addUserDebugLine([0, 0, 0], [0, 1, 0], [0, 1, 0], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
+db_graph["z"] = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [0, 0, 1], parentObjectUniqueId=robot_id, parentLinkIndex=-1)
 
 db_graph["w_c"] = p.addUserDebugLine([0, 0, 0], [0, 0, 1], [1, 0, 0], parentObjectUniqueId=robot_id,
                                            parentLinkIndex=-1)
@@ -146,7 +146,7 @@ def normalize_ftz(ftz_in):
         return ftz_in * ftz_lim / ftz_max
 
 
-damping = False
+damping = True
 
 for T_st in l_T_st:
     s = get_state()
@@ -154,6 +154,21 @@ for T_st in l_T_st:
     q_ts = T_st["q_st"].conj()
     q_tc = q_ts * s["q_sc"]
     t_diff = np.linalg.norm(s["t_sc"] - T_st["t_st"])
+
+    db_graph["x"] = p.addUserDebugLine(list(T_st["t_st"]), list(T_st["t_st"] + as_rotation_matrix(T_st["q_st"])[:, 0]), [1, 0, 0],
+                                       parentObjectUniqueId=-1,
+                                       parentLinkIndex=-1,
+                                       replaceItemUniqueId=db_graph["x"])
+
+    db_graph["y"] = p.addUserDebugLine(list(T_st["t_st"]), list(T_st["t_st"] + as_rotation_matrix(T_st["q_st"])[:, 1]), [0, 1, 0],
+                                       parentObjectUniqueId=-1,
+                                       parentLinkIndex=-1,
+                                       replaceItemUniqueId=db_graph["y"])
+
+    db_graph["z"] = p.addUserDebugLine(list(T_st["t_st"]), list(T_st["t_st"] + as_rotation_matrix(T_st["q_st"])[:, 2]), [0, 0, 1],
+                                       parentObjectUniqueId=-1,
+                                       parentLinkIndex=-1,
+                                       replaceItemUniqueId=db_graph["z"])
 
     while q_tc.w < 0.999 or \
             t_diff > 0.3 or \
@@ -182,13 +197,15 @@ for T_st in l_T_st:
 
         if damping:
             # Apply damping from water
-            M_c_damping = -10 * s["w_c"]
+            M_c_damping = -1 * s["w_c"]
             p.applyExternalTorque(robot_id, -1, M_c_damping.tolist(), flags=p.WORLD_FRAME)
             # TODO bug in pybullet.
             # TODO WORLD_FRAME and link frame are inverted https://github.com/bulletphysics/bullet3/issues/1949
 
             F_c_damping = -10 * s["v_c"]
             p.applyExternalForce(robot_id, -1, F_c_damping.tolist(), [0, 0, 0], flags=p.LINK_FRAME)
+
+            # TODO add buoyancy force and torque.
 
         for link_idx, ftz_i in enumerate(np.nditer(ftz)):
             # Apply control forces
