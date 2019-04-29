@@ -119,14 +119,26 @@ def get_get_ftz_from_F_c(urdf_file_path):
     }
 
 
+w_c = sp.Matrix(sp.symarray('w_c', 3))
+v_c = sp.Matrix(sp.symarray('v_c', 3))
+V_c = sp.Matrix([w_c, v_c])
+
+t_sc = sp.Matrix(sp.symarray('t_sc', 3))
+q_s_cog = sp.Matrix(sp.symbols('q_sc_w q_sc_x q_sc_y q_sc_z'))  # world to COG
+q_sc = sophus.Quaternion(q_s_cog[0], q_s_cog[1:4, :])
+T_sc = sophus.Se3(sophus.So3(q_sc), t_sc)
+
+t_st = sp.Matrix(sp.symarray('t_st', 3))
+q_s_target = sp.Matrix(sp.symbols('q_st_w q_st_x q_st_y q_st_z'))  # world to target
+q_st = sophus.Quaternion(q_s_target[0], q_s_target[1:4, :])
+T_st = sophus.Se3(sophus.So3(q_st), t_st)
+
+
 def get_get_ftz_from_V_c_dV_c(urdf_file_path):
     l_robot = get_robot_parameters(urdf_file_path)
     G_c = sp.Matrix.zeros(6, 6)
     G_c[0:3, 0:3] = l_robot["I_c"]
     G_c[3:, 3:] = l_robot["m"] * sp.Matrix.eye(3)
-    w_c = sp.Matrix(sp.symarray('w_c', 3))
-    v_c = sp.Matrix(sp.symarray('v_c', 3))
-    V_c = sp.Matrix([w_c, v_c])
 
     dV_c = sp.Matrix([sp.Matrix(sp.symarray('dw', 3)), sp.Matrix(sp.symarray('dv', 3))])
     AdV_c = adv(V_c)
@@ -145,22 +157,7 @@ def get_get_ftz_from_V_c_dV_c(urdf_file_path):
     }
 
 
-t_sc = sp.Matrix(sp.symarray('t_sc', 3))
-q_s_cog = sp.Matrix(sp.symbols('q_sc_w q_sc_x q_sc_y q_sc_z'))  # world to COG
-q_sc = sophus.Quaternion(q_s_cog[0], q_s_cog[1:4, :])
-T_sc = sophus.Se3(sophus.So3(q_sc), t_sc)
-
-t_st = sp.Matrix(sp.symarray('t_st', 3))
-q_s_target = sp.Matrix(sp.symbols('q_st_w q_st_x q_st_y q_st_z'))  # world to target
-q_st = sophus.Quaternion(q_s_target[0], q_s_target[1:4, :])
-T_st = sophus.Se3(sophus.So3(q_st), t_st)
-
-
 def get_pose_control():
-    w_c = sp.Matrix(sp.symarray('w_c', 3))
-    v_c = sp.Matrix(sp.symarray('v_c', 3))
-    V_c = sp.Matrix([w_c, v_c])
-
     w_gain = sp.Matrix(sp.symarray('w_gain', 3))
     q_gain = sp.Matrix(sp.symarray('q_gain', 3))
     v_gain = sp.Matrix(sp.symarray('v_gain', 3))
@@ -185,10 +182,6 @@ def get_pose_control():
 
 
 def get_get_dV_c_from_target_T(urdf_file_path):
-    w_c = sp.Matrix(sp.symarray('w_c', 3))
-    v_c = sp.Matrix(sp.symarray('v_c', 3))
-    V_c = sp.Matrix([w_c, v_c])
-
     w_gain = sp.Matrix(sp.symarray('w_gain', 3))
     q_gain = sp.Matrix(sp.symarray('q_gain', 3))
     v_gain = sp.Matrix(sp.symarray('v_gain', 3))
