@@ -53,6 +53,7 @@ def get_robot_parameters(urdf_file_path):
         # (3.95) Express wrench in another basis.
         # MODERN ROBOTICS MECHANICS, PLANNING, AND CONTROL Kevin M. Lynch and Frank C. Park May 3, 2017
         T_adj_tc = sophus.Se3.Adj(se3_ct.inverse()).T
+        pprint(T_adj_tc)
         F_c = T_adj_tc * F_t
 
         # pprint(F_c)
