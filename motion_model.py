@@ -59,7 +59,7 @@ def get_robot_parameters(urdf_file_path):
 
         F_c_summ += F_c
 
-        th_map_col = T_adj_tc * sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, 1])])
+        th_map_col = T_adj_tc * sp.Matrix([sp.Matrix([0, 0, 1]), sp.Matrix([0, 0, 0])])
         # th_map_col = th_map_col/th_map_col.norm()
 
         thr_map[:, n] = th_map_col
