@@ -52,15 +52,13 @@ def get_robot_parameters(urdf_file_path):
         F_t = sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, ftz[n, 0]])])
         # (3.95) Express wrench in another basis.
         # MODERN ROBOTICS MECHANICS, PLANNING, AND CONTROL Kevin M. Lynch and Frank C. Park May 3, 2017
+        # F_t = [mtx; mty; mtz; ftx; fty; ftz] where m - moments and f - forces.
         T_adj_tc = sophus.Se3.Adj(se3_ct.inverse()).T
-        pprint(T_adj_tc)
         F_c = T_adj_tc * F_t
-
-        # pprint(F_c)
-
         F_c_summ += F_c
 
-        th_map_col = T_adj_tc * sp.Matrix([sp.Matrix([0, 0, 1]), sp.Matrix([0, 0, 0])])
+        th_map_col = T_adj_tc * sp.Matrix([sp.Matrix([0, 0, 0]), sp.Matrix([0, 0, 1])])
+        # Here we apply force along z+ direction and transform it.
         # th_map_col = th_map_col/th_map_col.norm()
 
         thr_map[:, n] = th_map_col
