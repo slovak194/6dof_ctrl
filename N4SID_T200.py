@@ -100,7 +100,7 @@ def ident_sippy(u, y, dim):
 def ident_interface(fun, u, y, dim):
     AID, BID, CID, DID, *rest = fun(u, y, dim)
     USysID = (AID, BID, CID, DID)
-    print(dim, end=' ')
+    print(dim)
     return USysID
 
 
