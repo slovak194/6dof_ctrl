@@ -2,4 +2,5 @@
 cmake-*
 __pycache__
 *.m~
+*.html
 
