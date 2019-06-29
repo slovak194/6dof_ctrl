@@ -1,5 +1,4 @@
 # %%
-import os
 import numpy as np
 import pandas as pd
 import glob
@@ -12,15 +11,6 @@ import plotly.graph_objs as go
 import scipy.signal as sp
 
 from webplot import WebPlot
-
-os.chdir('/home/slovak/test/content')
-os.system('rm -rf ./*')
-os.system('git clone https://github.com/slovak194/6dof_ctrl.git')
-
-os.chdir('6dof_ctrl')
-os.system('ls')
-
-# %%
 
 path = r'../6dof_ctrl'
 all_files = glob.glob(path + "/*.csv")
@@ -76,9 +66,7 @@ data_raw = {
 
 data_prep = preprocess(data_raw)
 
-dashboard_file = "/home/slovak/test/DASHBOARD.html"
-
-plt = WebPlot(dashboard_file)
+plt = WebPlot()
 
 for k, v in data_prep.items():
     fig = tools.make_subplots(rows=3, cols=1, print_grid=False)
