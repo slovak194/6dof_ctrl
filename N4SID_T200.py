@@ -85,6 +85,7 @@ for k, v in data_prep.items():
 
     plt.plot(fig)
 
+plt.show()
 
 # %%
 def ident_sippy(u, y, dim):
@@ -108,11 +109,13 @@ id_data = data_prep["T200_Sine_0-10_Hz_1600-1900_us"]
 input_u = id_data["input (us)"][np.newaxis, :]
 output_y = id_data["force (lb)"][np.newaxis, :]
 
-dims = range(4, 5)
+dims = range(4, 10)
 
 USysIDs = [ident_interface(ident_sippy, input_u, output_y, dim) for dim in dims]
 
 # %%
+
+plt = WebPlot()
 
 for USysID in USysIDs:
     print("\nOrder = " + str(USysID[0].shape[0]) + "\n")
@@ -129,7 +132,7 @@ for USysID in USysIDs:
                    name="zeros",
                    xaxis="x", yaxis="y"),
         go.Scatter(x=w * 2 * np.pi, y=np.squeeze(mag), name="mag", xaxis="x2", yaxis="y2"),
-        go.Scatter(x=w * 2 * np.pi, y=np.squeeze(phase), name="phase", xaxis="x3", yaxis="y3")
+        go.Scatter(x=w * 2 * np.pi, y=np.squeeze(phase*180/np.pi), name="phase", xaxis="x3", yaxis="y3")
     ]
 
     traces += [
