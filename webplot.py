@@ -6,10 +6,9 @@ import plotly
 
 class WebPlot:
 
-    figs = []
-
     def __init__(self, file_name="plotly_plot.html"):
         self.file_name = file_name
+        self.figs = []
 
     def plot(self, fig):
         self.figs += [fig]
