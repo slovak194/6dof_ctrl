@@ -58,19 +58,17 @@ for bin_log_name in bin_log_names:
 
         data_selected[log_key][msg_type] = pd.read_csv(csv_log_path, index_col=None, header=0)
 
-        if "TimeUS" in data_selected[log_key][msg_type].keys():
-            if min_ts_fast > data_selected[log_key][msg_type]["TimeUS"][0]:
-                min_ts_fast = data_selected[log_key][msg_type]["TimeUS"][0]
+        if "timestamp" in data_selected[log_key][msg_type].keys() and "FMT" not in msg_type:
+            if min_ts_fast > data_selected[log_key][msg_type]["timestamp"][0]:
+                min_ts_fast = data_selected[log_key][msg_type]["timestamp"][0]
 
 data_prep = data_selected
 us2s = 10**-6
 
 
 def get_ts_scatter(df, lmsg_name, ltrace_name):
-    if "TimeUS" in df[lmsg_name].keys():
-        return go.Scatter(x=(df[lmsg_name]["TimeUS"] - min_ts_fast) * us2s, y=df[lmsg_name][ltrace_name], name=lmsg_name + ":" + ltrace_name, mode='lines+markers')
-    elif "timestamp" in df[lmsg_name].keys():
-        return go.Scatter(x=df[lmsg_name]["timestamp"], y=df[lmsg_name][ltrace_name], name=lmsg_name + ":" + ltrace_name, mode='lines+markers')
+    if "timestamp" in df[lmsg_name].keys():
+        return go.Scatter(x=(df[lmsg_name]["timestamp"] - min_ts_fast), y=df[lmsg_name][ltrace_name], name=lmsg_name + ":" + ltrace_name, mode='lines+markers')
 
 
 def make_subplots(title, rows=1, cols=1):
@@ -88,7 +86,14 @@ def make_subplots(title, rows=1, cols=1):
 plt = WebPlot()
 
 for k, v in data_prep.items():
+
+    if "ATT" not in v.keys():
+        continue
+
     fig = make_subplots(k, rows=3, cols=1)
+
+    print(k)
+    print(v.keys())
 
     fig.append_trace(get_ts_scatter(v, "ATT", "Roll"), 1, 1)
     fig.append_trace(get_ts_scatter(v, "ATT", "Pitch"), 1, 1)
@@ -112,6 +117,10 @@ plt.show()
 plt = WebPlot()
 
 for k, v in data_prep.items():
+
+    if "RCIN" not in v.keys():
+        continue
+
     fig = make_subplots(k, rows=6, cols=1)
 
     for idx in range(1, 7):
