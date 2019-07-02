@@ -4,9 +4,11 @@ import sys
 import json
 from pprint import pprint
 
+import numpy as np
 import pandas as pd
 from plotly import tools
 import plotly.graph_objs as go
+import matplotlib.pyplot as mplot
 
 from webplot import WebPlot
 
@@ -15,14 +17,15 @@ Ts = 0.04  # Most probably
 path = "./"
 
 bin_log_names = [
-    "log_1_2019-7-2-10-21-48.bin"
+    "log_1_2019-7-2-10-21-48.bin",
+    "mav.tlog"
 ]
 
 log_keys = [bin_log_name.split(".")[0] for bin_log_name in bin_log_names]
 
 data_selected = {}
 data_json = {}
-min_ts = sys.maxsize
+min_ts_fast = sys.maxsize
 
 
 def file_n_lines(file_path):
@@ -36,7 +39,7 @@ for bin_log_name in bin_log_names:
     data_json[log_key] = {}
 
     bin_log_path = path + bin_log_name
-    json_log_path = path + bin_log_name + "." + "json"
+    json_log_path = path + "tmp_" + bin_log_name + "." + "json"
 
     os.system("mavlogdump.py --format=json " + bin_log_path + " > " + json_log_path)
 
@@ -46,7 +49,7 @@ for bin_log_name in bin_log_names:
     print(data_json[log_key]["messages"])
 
     for msg_type in data_json[log_key]["messages"]:
-        csv_log_path = path + bin_log_name + "." + msg_type + ".csv"
+        csv_log_path = path + "tmp_" + bin_log_name + "." + msg_type + ".csv"
         if not os.path.isfile(csv_log_path):
             os.system("mavlogdump.py --format=csv --types=" + msg_type + " " + bin_log_path + " > " + csv_log_path)
 
@@ -56,15 +59,18 @@ for bin_log_name in bin_log_names:
         data_selected[log_key][msg_type] = pd.read_csv(csv_log_path, index_col=None, header=0)
 
         if "TimeUS" in data_selected[log_key][msg_type].keys():
-            if min_ts > data_selected[log_key][msg_type]["TimeUS"][0]:
-                min_ts = data_selected[log_key][msg_type]["TimeUS"][0]
+            if min_ts_fast > data_selected[log_key][msg_type]["TimeUS"][0]:
+                min_ts_fast = data_selected[log_key][msg_type]["TimeUS"][0]
 
 data_prep = data_selected
 us2s = 10**-6
 
 
 def get_ts_scatter(df, lmsg_name, ltrace_name):
-    return go.Scatter(x=(df[lmsg_name]["TimeUS"]-min_ts)*us2s, y=df[lmsg_name][ltrace_name], name=lmsg_name + ":" + ltrace_name, mode='lines+markers')
+    if "TimeUS" in df[lmsg_name].keys():
+        return go.Scatter(x=(df[lmsg_name]["TimeUS"] - min_ts_fast) * us2s, y=df[lmsg_name][ltrace_name], name=lmsg_name + ":" + ltrace_name, mode='lines+markers')
+    elif "timestamp" in df[lmsg_name].keys():
+        return go.Scatter(x=df[lmsg_name]["timestamp"], y=df[lmsg_name][ltrace_name], name=lmsg_name + ":" + ltrace_name, mode='lines+markers')
 
 
 def make_subplots(title, rows=1, cols=1):
@@ -116,12 +122,44 @@ for k, v in data_prep.items():
 
 plt.show()
 
+
+# %%
+plt = WebPlot()
+
+for k, v in data_prep.items():
+    if 'ATTITUDE' not in v.keys():
+        continue
+
+    fig = make_subplots(k, rows=3, cols=1)
+
+    fig.append_trace(get_ts_scatter(v, "ATTITUDE", "ATTITUDE.roll"), 1, 1)
+    fig.append_trace(get_ts_scatter(v, "ATTITUDE", "ATTITUDE.pitch"), 1, 1)
+    fig.append_trace(get_ts_scatter(v, "ATTITUDE", "ATTITUDE.yaw"), 1, 1)
+
+    fig.append_trace(get_ts_scatter(v, "ATTITUDE", "ATTITUDE.rollspeed"), 2, 1)
+    fig.append_trace(get_ts_scatter(v, "ATTITUDE", "ATTITUDE.pitchspeed"), 2, 1)
+    fig.append_trace(get_ts_scatter(v, "ATTITUDE", "ATTITUDE.yawspeed"), 2, 1)
+
+    plt.plot(fig)
+
+plt.show()
+
 # %%
 
 exit(0)
 
 # %%
 
-msg_struct = {msg_name: {trace_name: '' for trace_name, trace_value in msg_value.items()} for msg_name, msg_value in data_selected[log_keys[0]].items()}
+msg_struct = {msg_name: {trace_name: '' for trace_name, trace_value in msg_value.items()} for msg_name, msg_value in data_selected[log_keys[1]].items()}
 
 pprint(msg_struct)
+
+
+# %%
+
+timestamps = (data_prep["mav"]["ATTITUDE"]["timestamp"] - data_prep["mav"]["ATTITUDE"]["timestamp"][0])
+tdiff = np.diff(data_prep["mav"]["ATTITUDE"]["timestamp"])
+
+mplot.plot(tdiff, '.-')
+
+mplot.show()

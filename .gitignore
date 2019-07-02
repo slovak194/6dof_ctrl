@@ -7,5 +7,5 @@ __pycache__
 *.bin
 
 *.csv
-
+*.tlog
 *.json
