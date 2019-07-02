@@ -71,9 +71,6 @@ for bin_log_name in bin_log_names:
 
 data_prep = data_selected
 
-
-# %%
-
 us2s = 10**-6
 plt = WebPlot()
 
@@ -82,8 +79,19 @@ def get_ts_scatter(df, lmsg_name, ltrace_name):
     return go.Scatter(x=(df[lmsg_name]["TimeUS"]-min_ts)*us2s, y=df[lmsg_name][ltrace_name], name=ltrace_name, mode='lines+markers')
 
 
-for k, v in data_prep.items():
+def make_subplots():
+    f = tools.make_subplots(rows=3, cols=1, print_grid=False)
+    f["layout"]["title"]["text"] = k
+    f["layout"]["paper_bgcolor"] = "rgb(0,0,0)"
+    f["layout"]["plot_bgcolor"] = "rgb(0,0,0)"
+    f["layout"]["legend"] = dict(orientation="h")
+    f["layout"]["xaxis"] = dict(autorange=True)
+    f["layout"]["xaxis"] = dict(tickformat=".3f")
+    return f
+# %%
 
+
+for k, v in data_prep.items():
     fig = tools.make_subplots(rows=3, cols=1, print_grid=False)
     fig["layout"]["title"]["text"] = k
     fig["layout"]["paper_bgcolor"] = "rgb(0,0,0)"
@@ -107,6 +115,36 @@ for k, v in data_prep.items():
     plt.plot(fig)
 
 plt.show()
+
+
+# %%
+
+
+for k, v in data_prep.items():
+    fig = tools.make_subplots(rows=3, cols=1, print_grid=False)
+    fig["layout"]["title"]["text"] = k
+    fig["layout"]["paper_bgcolor"] = "rgb(0,0,0)"
+    fig["layout"]["plot_bgcolor"] = "rgb(0,0,0)"
+    fig["layout"]["legend"] = dict(orientation="h")
+    fig["layout"]["xaxis"] = dict(autorange=True)
+    fig["layout"]["xaxis"] = dict(tickformat=".3f")
+
+    fig.append_trace(get_ts_scatter(v, "ATT", "Roll"), 1, 1)
+    fig.append_trace(get_ts_scatter(v, "ATT", "Pitch"), 1, 1)
+    fig.append_trace(get_ts_scatter(v, "ATT", "Yaw"), 1, 1)
+
+    fig.append_trace(get_ts_scatter(v, "IMU", "AccX"), 2, 1)
+    fig.append_trace(get_ts_scatter(v, "IMU", "AccY"), 2, 1)
+    fig.append_trace(get_ts_scatter(v, "IMU", "AccZ"), 2, 1)
+
+    fig.append_trace(get_ts_scatter(v, "IMU", "GyrX"), 3, 1)
+    fig.append_trace(get_ts_scatter(v, "IMU", "GyrY"), 3, 1)
+    fig.append_trace(get_ts_scatter(v, "IMU", "GyrZ"), 3, 1)
+
+    plt.plot(fig)
+
+plt.show()
+
 
 
 # %%
