@@ -22,3 +22,24 @@ class WebPlot:
                 of.write(plotly.offline.plot(f, include_plotlyjs=False, output_type='div') + "\n")
             of.write("</body></html>")
         webbrowser.open(os.path.relpath(self.file_name))
+
+
+def get_ts_scatter(ts, lmsg_name, ltrace_name, scaler=1.0):
+    if "timestamp" in ts[lmsg_name].keys():
+        return plotly.graph_objs.Scatter(
+            x=(ts[lmsg_name]["timestamp"]),
+            y=ts[lmsg_name][ltrace_name] * scaler,
+            name=lmsg_name + ":" + ltrace_name,
+            mode='lines+markers'
+        )
+
+
+def make_subplots(title, rows=1, cols=1):
+    f = plotly.tools.make_subplots(rows=rows, cols=cols, print_grid=False)
+    f["layout"]["title"]["text"] = title
+    f["layout"]["paper_bgcolor"] = "rgb(0,0,0)"
+    f["layout"]["plot_bgcolor"] = "rgb(0,0,0)"
+    f["layout"]["legend"] = dict(orientation="h")
+    f["layout"]["xaxis"] = dict(autorange=True)
+    f["layout"]["xaxis"] = dict(tickformat=".3f")
+    return f
