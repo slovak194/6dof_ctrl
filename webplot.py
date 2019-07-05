@@ -43,3 +43,26 @@ def make_subplots(title, rows=1, cols=1):
     f["layout"]["xaxis"] = dict(autorange=True)
     f["layout"]["xaxis"] = dict(tickformat=".3f")
     return f
+
+
+def plot(x, y=''):
+    plt = WebPlot("fast_plot.html")
+    fig = make_subplots("fast_plot")
+
+    if len(y) == 0:
+        fig.append_trace(plotly.graph_objs.Scatter(
+            y=x,
+            name="fast_plot",
+            mode='lines+markers'
+        ), 1, 1)
+
+    else:
+        fig.append_trace(plotly.graph_objs.Scatter(
+            x=x,
+            y=y,
+            name="fast_plot",
+            mode='lines+markers'
+        ), 1, 1)
+
+    plt.plot(fig)
+    plt.show()
