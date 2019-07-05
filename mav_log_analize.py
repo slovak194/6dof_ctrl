@@ -9,9 +9,6 @@ import numpy as np
 import webplot as wp
 import mav_log_helper as mlh
 
-# import matplotlib.pyplot as mplot
-# import pyqtgraph as pg
-
 Ts = 0.04  # Most probably
 
 base_dir = "/home/slovak/fishbot/test/water_tank/"

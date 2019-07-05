@@ -2,6 +2,8 @@ import os
 import webbrowser
 
 import plotly
+import matplotlib.pyplot as mplot
+import pyqtgraph as pg
 
 
 class WebPlot:
