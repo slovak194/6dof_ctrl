@@ -6,7 +6,7 @@ from pprint import pprint
 
 import numpy as np
 
-import webplot as wp
+import plot_helper as ph
 import mav_log_helper as mlh
 
 Ts = 0.04  # Most probably
@@ -24,28 +24,28 @@ log_dir = base_dir + log_dir
 print(log_dir)
 
 data_json = mlh.dir_prepare(log_dir)
-data_prep = mlh.dir_load(log_dir)
+data_raw = mlh.dir_load(log_dir)
 
 if not os.path.isfile(log_dir + "plotly-latest.min.js"):
     sh.copy("plotly-latest.min.js", log_dir)
 
 
 # %% ATTITUDE
-plt = wp.WebPlot(log_dir + "attitude.html")
+plt = ph.WebPlot(log_dir + "attitude.html")
 
-for k, v in data_prep.items():
+for k, v in data_raw.items():
 
     if "ATT" not in v.keys():
         continue
 
-    fig = wp.make_subplots(k, rows=1, cols=1)
+    fig = ph.make_subplots(k, rows=1, cols=1)
 
     print(k)
     print(v.keys())
 
-    fig.append_trace(wp.get_ts_scatter(v, "ATT", "Roll", scaler=np.pi/180), 1, 1)
-    fig.append_trace(wp.get_ts_scatter(v, "ATT", "Pitch", scaler=np.pi/180), 1, 1)
-    fig.append_trace(wp.get_ts_scatter(v, "ATT", "Yaw", scaler=np.pi/180), 1, 1)
+    fig.append_trace(ph.get_ts_scatter(v, "ATT", "Roll", scaler=np.pi / 180), 1, 1)
+    fig.append_trace(ph.get_ts_scatter(v, "ATT", "Pitch", scaler=np.pi / 180), 1, 1)
+    fig.append_trace(ph.get_ts_scatter(v, "ATT", "Yaw", scaler=np.pi / 180), 1, 1)
     #
     # fig.append_trace(wp.get_ts_scatter(v, "IMU", "AccX"), 2, 1)
     # fig.append_trace(wp.get_ts_scatter(v, "IMU", "AccY"), 2, 1)
@@ -58,15 +58,15 @@ for k, v in data_prep.items():
     plt.plot(fig)
 
 
-for k, v in data_prep.items():
+for k, v in data_raw.items():
     if 'ATTITUDE' not in v.keys():
         continue
 
-    fig = wp.make_subplots(k, rows=1, cols=1)
+    fig = ph.make_subplots(k, rows=1, cols=1)
 
-    fig.append_trace(wp.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.roll"), 1, 1)
-    fig.append_trace(wp.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.pitch"), 1, 1)
-    fig.append_trace(wp.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.yaw"), 1, 1)
+    fig.append_trace(ph.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.roll"), 1, 1)
+    fig.append_trace(ph.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.pitch"), 1, 1)
+    fig.append_trace(ph.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.yaw"), 1, 1)
     #
     # fig.append_trace(wp.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.rollspeed"), 2, 1)
     # fig.append_trace(wp.get_ts_scatter(v, "ATTITUDE", "ATTITUDE.pitchspeed"), 2, 1)
@@ -81,18 +81,18 @@ exit(0)
 
 # %% RC ins and outs
 
-plt = wp.WebPlot(log_dir + "rc_in_out.html")
+plt = ph.WebPlot(log_dir + "rc_in_out.html")
 
-for k, v in data_prep.items():
+for k, v in data_raw.items():
 
     if "RCIN" not in v.keys():
         continue
 
-    fig = wp.make_subplots(k, rows=6, cols=1)
+    fig = ph.make_subplots(k, rows=6, cols=1)
 
     for idx in range(1, 7):
-        fig.append_trace(wp.get_ts_scatter(v, "RCIN", "C" + str(idx)), idx, 1)
-        fig.append_trace(wp.get_ts_scatter(v, "RCOU", "C" + str(idx)), idx, 1)
+        fig.append_trace(ph.get_ts_scatter(v, "RCIN", "C" + str(idx)), idx, 1)
+        fig.append_trace(ph.get_ts_scatter(v, "RCOU", "C" + str(idx)), idx, 1)
 
     plt.plot(fig)
 
@@ -113,18 +113,18 @@ def get_stats(msg_value):
 
 # %% All
 msg_struct = [{msg_name: {trace_name: get_stats(msg_value) for trace_name, trace_value in msg_value.items()} for msg_name, msg_value in
-               data_prep[key].items()} for key in data_prep.keys()]
+               data_raw[key].items()} for key in data_raw.keys()]
 pprint(msg_struct)
 
 # %% Dataflash
 msg_struct = [{msg_name: {trace_name: get_stats(msg_value) for trace_name, trace_value in msg_value.items()} for msg_name, msg_value in
-               data_prep[key].items()} for key in ["1"]]
+               data_raw[key].items()} for key in ["1"]]
 pprint(msg_struct)
 
 # %% Mavlink
 
 msg_struct = [{msg_name: {trace_name: get_stats(msg_value) for trace_name, trace_value in msg_value.items()} for msg_name, msg_value in
-               data_prep[key].items()} for key in ["flight"]]
+               data_raw[key].items()} for key in ["flight"]]
 pprint(msg_struct)
 
 # %% Something more
